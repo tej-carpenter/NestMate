@@ -1,0 +1,101 @@
+@import "leaflet/dist/leaflet.css";
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+	color-scheme: light;
+	--background: #f8fafc;
+	--foreground: #0f172a;
+	--surface: rgba(255, 255, 255, 0.9);
+	--surface-strong: #ffffff;
+	--border: rgba(15, 23, 42, 0.12);
+	--muted: #64748b;
+	--brand: #0f766e;
+	--brand-strong: #115e59;
+	--accent: #f97316;
+	--ring: rgba(15, 118, 110, 0.22);
+
+	/* Design tokens */
+	--radius-sm: 8px;
+	--radius-md: 16px;
+	--radius-lg: 24px;
+	--space-1: 4px;
+	--space-2: 8px;
+	--space-3: 12px;
+	--space-4: 16px;
+	--space-5: 24px;
+	--space-6: 32px;
+	--type-small: 0.875rem;
+	--type-base: 1rem;
+	--type-lg: 1.125rem;
+	--type-xl: 1.25rem;
+}
+
+html[data-theme="dark"] {
+	color-scheme: dark;
+	--background: #07111f;
+	--foreground: #e5eefb;
+	--surface: rgba(15, 23, 42, 0.72);
+	--surface-strong: #0f172a;
+	--border: rgba(148, 163, 184, 0.16);
+	--muted: #94a3b8;
+	--brand: #14b8a6;
+	--brand-strong: #0f766e;
+	--accent: #fb923c;
+	--ring: rgba(45, 212, 191, 0.28);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html {
+	scroll-behavior: smooth;
+}
+
+body {
+	margin: 0;
+	min-height: 100dvh;
+	background: var(--background);
+	background-image: radial-gradient(circle at top, rgba(20, 184, 166, 0.12), transparent 36%), linear-gradient(180deg, #ffffff 0%, #f8fafc 44%, var(--background) 100%);
+	color: var(--foreground);
+	font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+}
+
+html[data-theme="dark"] body {
+	background-image: radial-gradient(circle at top, rgba(20, 184, 166, 0.1), transparent 32%), linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.82) 40%, var(--background) 100%);
+}
+
+::selection {
+	background: rgba(249, 115, 22, 0.22);
+}
+
+a {
+	color: inherit;
+	text-decoration: none;
+}
+
+input,
+textarea,
+select,
+button {
+	font: inherit;
+}
+
+.glass-panel {
+	background: var(--surface);
+	backdrop-filter: blur(18px);
+	border: 1px solid var(--border);
+	box-shadow: 0 16px 46px rgba(15, 23, 42, 0.08);
+}
+
+.text-balance {
+	text-wrap: balance;
+}
+
+.leaflet-container {
+	min-height: 100%;
+	width: 100%;
+	font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+	background: var(--surface-strong);
+}
