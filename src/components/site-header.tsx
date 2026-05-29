@@ -48,7 +48,7 @@ export function SiteHeader() {
       </div>
 
       <div className={`border-t border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 sm:hidden ${mobileMenuOpen ? "block" : "hidden"}`}>
-        <div className="grid gap-2">
+        <div className="grid max-h-[60dvh] gap-2 overflow-y-auto pb-1">
           {navItems.map((item) => (
             <Link
               key={item.href}

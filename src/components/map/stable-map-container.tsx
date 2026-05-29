@@ -3,6 +3,7 @@
 import { type CSSProperties, type ReactNode, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Map as LeafletMap } from "leaflet";
 import { LeafletProvider, createLeafletContext } from "@react-leaflet/core";
+import { cn } from "@/lib/cn";
 
 type StableMapContainerProps = {
 	center?: [number, number];
@@ -22,7 +23,7 @@ export const StableMapContainer = forwardRef<LeafletMap | null, StableMapContain
 	props,
 	forwardedRef,
 ) {
-	const { bounds, boundsOptions, center, children, className, id, placeholder, style, whenReady, zoom, ...options } = props as StableMapContainerProps & Record<string, any>;
+	const { bounds, boundsOptions, center, children, className, id, placeholder, style, whenReady, zoom, ...options } = props as StableMapContainerProps & Record<string, unknown>;
 	const mapRef = useRef<LeafletMap | null>(null);
 	const [context, setContext] = useState<ReturnType<typeof createLeafletContext> | null>(null);
 
@@ -33,7 +34,7 @@ export const StableMapContainer = forwardRef<LeafletMap | null, StableMapContain
 			return;
 		}
 
-		const map = new LeafletMap(node, options);
+		const map = new LeafletMap(node, options as ConstructorParameters<typeof LeafletMap>[1]);
 		mapRef.current = map;
 
 		if (center != null && zoom != null) {
@@ -64,7 +65,7 @@ export const StableMapContainer = forwardRef<LeafletMap | null, StableMapContain
 	);
 
 	return (
-		<div ref={attachContainer} className={className} id={id} style={style}>
+		<div ref={attachContainer} className={cn("relative overflow-hidden", className)} id={id} style={style}>
 			{contents}
 		</div>
 	);

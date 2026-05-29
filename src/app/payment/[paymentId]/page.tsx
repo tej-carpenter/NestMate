@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, BadgeCheck, ChevronDown, CreditCard, Wallet } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { formatRupee } from "@/lib/format";
 import { getBookingById, getPaymentById, setPaymentStatus } from "@/lib/local-data";
 
-export default function PaymentPage({ params }: { params: { paymentId: string } }) {
+export default function PaymentPage({ params }: { params: Promise<{ paymentId: string }> | { paymentId: string } }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [payment, setPayment] = useState<ReturnType<typeof getPaymentById>>(null);
@@ -17,9 +17,11 @@ export default function PaymentPage({ params }: { params: { paymentId: string } 
   const [paymentStatus, setPaymentStatusState] = useState<"pending" | "paid" | "refund_requested" | "refunded">("pending");
   const [status, setStatus] = useState<string | null>(null);
 
+  const resolvedParams = use(params as Promise<{ paymentId: string }>);
+
   useEffect(() => {
     const handle = window.setTimeout(() => {
-      const nextPayment = getPaymentById(params.paymentId);
+      const nextPayment = getPaymentById(resolvedParams.paymentId);
       setPayment(nextPayment);
       setBooking(nextPayment ? getBookingById(nextPayment.bookingId) : null);
       setMethod(nextPayment?.method ?? "upi");
@@ -28,7 +30,7 @@ export default function PaymentPage({ params }: { params: { paymentId: string } 
     }, 0);
 
     return () => window.clearTimeout(handle);
-  }, [params.paymentId]);
+  }, [resolvedParams.paymentId]);
 
   const cashback = Math.max(0, Math.round((payment?.amount ?? 0) * 0.03));
   const walletCredit = Math.max(0, Math.round((payment?.amount ?? 0) * 0.05));

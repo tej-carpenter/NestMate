@@ -1,0 +1,307 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, BadgeCheck, Compass, MapPinned, ShieldCheck, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ListingCard } from "@/components/listings/listing-card";
+import { getBookings, getListingInventory, type ListingInventoryItem } from "@/lib/local-data";
+import { geocodeListing } from "@/lib/nominatim";
+
+const LeafletMap = dynamic(() => import("@/components/map/leaflet-map"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[28rem] items-center justify-center rounded-[2rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] text-sm text-[color:var(--muted)] sm:h-[34rem]">
+      Loading discovery map...
+    </div>
+  ),
+});
+
+type MapPoint = {
+  id: string;
+  title: string;
+  locality: string;
+  city: string;
+  price: number;
+  href: string;
+  kind: ListingInventoryItem["kind"];
+  latitude: number;
+  longitude: number;
+};
+
+const trustHighlights = [
+  {
+    label: "Verified-first",
+    detail: "Properties are surfaced with visible verification state before booking.",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Transparent inventory",
+    detail: "Availability reflects stored listing records, not fabricated occupancy.",
+    icon: BadgeCheck,
+  },
+  {
+    label: "Resident-led feedback",
+    detail: "Ratings only appear after real resident reviews.",
+    icon: Sparkles,
+  },
+];
+
+export function HomeJourney() {
+  const [listings, setListings] = useState<ListingInventoryItem[]>([]);
+  const [bookingCount, setBookingCount] = useState(0);
+  const [mapPoints, setMapPoints] = useState<MapPoint[]>([]);
+  const [mapStatus, setMapStatus] = useState("Map points are loaded from stored listings.");
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const inventory = getListingInventory();
+      setListings(inventory);
+      setBookingCount(getBookings().length);
+    }, 0);
+
+    return () => window.clearTimeout(handle);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function hydrateMapPoints() {
+      if (listings.length === 0) {
+        setMapPoints([]);
+        setMapStatus("No listings yet. Publish a property to activate discovery.");
+        return;
+      }
+
+      const geocoded = await Promise.all(
+        listings.slice(0, 14).map(async (listing) => {
+          if (typeof listing.latitude === "number" && typeof listing.longitude === "number") {
+            return {
+              id: listing.id,
+              title: listing.title,
+              locality: listing.locality,
+              city: listing.city,
+              price: listing.price,
+              href: `/listings/${listing.slug}`,
+              kind: listing.kind,
+              latitude: listing.latitude,
+              longitude: listing.longitude,
+            } satisfies MapPoint;
+          }
+
+          const result = await geocodeListing(listing);
+
+          if (!result) {
+            return null;
+          }
+
+          return {
+            id: listing.id,
+            title: listing.title,
+            locality: listing.locality,
+            city: listing.city,
+            price: listing.price,
+            href: `/listings/${listing.slug}`,
+            kind: listing.kind,
+            latitude: result.lat,
+            longitude: result.lng,
+          } satisfies MapPoint;
+        }),
+      );
+
+      if (!active) {
+        return;
+      }
+
+      const resolved = geocoded.flatMap((point) => (point ? [point] : []));
+      setMapPoints(resolved);
+      setMapStatus(
+        resolved.length > 0
+          ? `${resolved.length} listing locations are live on the map.`
+          : "Listings are available, but map locations could not be resolved right now.",
+      );
+    }
+
+    void hydrateMapPoints();
+
+    return () => {
+      active = false;
+    };
+  }, [listings]);
+
+  const verifiedCount = useMemo(() => listings.filter((listing) => listing.verified).length, [listings]);
+  const cityCount = useMemo(() => new Set(listings.map((listing) => listing.city)).size, [listings]);
+  const publishedCount = useMemo(() => listings.filter((listing) => listing.status === "published").length, [listings]);
+  const featuredListings = useMemo(
+    () => listings.filter((listing) => listing.status === "published" && !listing.blacklisted).slice(0, 4),
+    [listings],
+  );
+
+  return (
+    <div className="space-y-6 pb-20">
+      <section className="relative overflow-hidden rounded-[2rem] border border-[color:var(--border)] bg-[linear-gradient(135deg,rgba(15,118,110,0.12),rgba(255,255,255,0.98),rgba(249,115,22,0.08))] p-6 shadow-[0_24px_72px_-36px_rgba(15,23,42,0.34)] dark:bg-[linear-gradient(135deg,rgba(20,184,166,0.16),rgba(15,23,42,0.95),rgba(249,115,22,0.14))] sm:p-8 lg:p-10">
+        <div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-teal-400/20 blur-3xl" aria-hidden />
+        <div className="absolute -bottom-28 left-12 h-72 w-72 rounded-full bg-orange-300/20 blur-3xl" aria-hidden />
+
+        <div className="relative grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-900 dark:text-teal-200">Trust to conversion journey</p>
+            <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl leading-tight text-slate-950 dark:text-slate-50 sm:text-5xl lg:text-6xl">
+              Discover verified stays, compare with confidence, and move in faster.
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-slate-200 sm:text-lg">
+              Start with trust markers, flow into map discovery, validate real marketplace proof, compare larger listing cards, and finish with clear booking or hosting actions.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button asChild size="lg" className="h-12 px-6">
+                <Link href="/search">
+                  Start searching
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="h-12 px-6">
+                <Link href="/host/listings/new">List your property</Link>
+              </Button>
+              <Button asChild size="lg" variant="ghost" className="h-12 px-5">
+                <Link href="/map">Explore map first</Link>
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-3 rounded-[1.75rem] border border-[color:var(--border)] bg-[color:var(--surface)]/85 p-4 backdrop-blur sm:p-5">
+            {[
+              ["Verified stays", verifiedCount > 0 ? String(verifiedCount) : "Verification in progress"],
+              ["Cities with live inventory", cityCount > 0 ? String(cityCount) : "Recently added"],
+              ["Successful bookings", bookingCount > 0 ? String(bookingCount) : "Awaiting first booking"],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-[1.2rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</p>
+                <p className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-50 sm:text-xl">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-3">
+        {trustHighlights.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <Card key={item.label} className="border-[color:var(--border)] bg-[color:var(--surface)] p-5">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-50 text-teal-900 dark:bg-teal-500/15 dark:text-teal-100">
+                <Icon className="h-4 w-4" />
+              </div>
+              <p className="mt-4 text-lg font-semibold text-slate-950 dark:text-slate-50">{item.label}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.detail}</p>
+            </Card>
+          );
+        })}
+      </section>
+
+      <section className="rounded-[2rem] border border-[color:var(--border)] bg-[color:var(--surface)] p-4 sm:p-5 lg:p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-800 dark:text-teal-300">Discovery</p>
+            <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50 sm:text-4xl">Larger map experience</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Scan where listings are concentrated, then drill into details.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge className="gap-2 bg-[color:var(--surface-strong)] text-slate-700 dark:text-slate-200">
+              <Compass className="h-3.5 w-3.5" /> Live map points
+            </Badge>
+            <Badge className="gap-2 bg-[color:var(--surface-strong)] text-slate-700 dark:text-slate-200">
+              <MapPinned className="h-3.5 w-3.5" /> Locality-first
+            </Badge>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-[2rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-2">
+          <LeafletMap points={mapPoints} searchPoint={null} />
+        </div>
+        <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{mapStatus}</p>
+      </section>
+
+      <section className="rounded-[2rem] border border-[color:var(--border)] bg-[color:var(--surface)] p-5 sm:p-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-800 dark:text-teal-300">Marketplace proof</p>
+        <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50 sm:text-4xl">Proof from real records, not placeholders</h2>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          <Card className="border-[color:var(--border)] bg-[color:var(--surface-strong)] p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Published listings</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-50">{publishedCount}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Count reflects stored listings with published status.</p>
+          </Card>
+          <Card className="border-[color:var(--border)] bg-[color:var(--surface-strong)] p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Verified inventory</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-50">{verifiedCount}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Verification visibility is surfaced on every listing card.</p>
+          </Card>
+          <Card className="border-[color:var(--border)] bg-[color:var(--surface-strong)] p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Booking completions</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-50">{bookingCount}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Booking totals come from real user actions saved locally.</p>
+          </Card>
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] border border-[color:var(--border)] bg-[color:var(--surface)] p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-800 dark:text-teal-300">Listings</p>
+            <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50 sm:text-4xl">Featured listings to compare quickly</h2>
+          </div>
+          <Button asChild variant="outline" className="h-11 px-5">
+            <Link href="/search">View all listings</Link>
+          </Button>
+        </div>
+
+        <div className="mt-5 grid gap-5 lg:grid-cols-2">
+          {featuredListings.length > 0 ? (
+            featuredListings.map((listing) => <ListingCard key={listing.id} listing={listing} className="min-h-[40rem]" />)
+          ) : (
+            <Card className="border-[color:var(--border)] p-6 text-sm leading-6 text-slate-600 dark:text-slate-300 lg:col-span-2">
+              No published listings yet. Add your first property to bring this marketplace section to life.
+            </Card>
+          )}
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <Card className="border-[color:var(--border)] bg-[linear-gradient(140deg,rgba(15,118,110,0.14),rgba(255,255,255,0.98))] p-6 dark:bg-[linear-gradient(140deg,rgba(20,184,166,0.18),rgba(15,23,42,0.95))] sm:p-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-900 dark:text-teal-200">Conversion</p>
+          <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50">Ready to move in?</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-200">Use search filters and map view to shortlist a stay, then proceed to booking with clear pricing and availability context.</p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Button asChild size="lg" className="h-12 px-6">
+              <Link href="/search">
+                Continue to search
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="h-12 px-6">
+              <Link href="/map">Open map view</Link>
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="border-[color:var(--border)] bg-[color:var(--surface)] p-6 sm:p-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-800 dark:text-teal-300">For hosts</p>
+          <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50">List your property and get discovered</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">Create a listing with location, amenities, and pricing. Published inventory appears across search and map discovery.</p>
+          <div className="mt-5 grid gap-3">
+            <Button asChild size="lg" className="h-12 justify-center">
+              <Link href="/host/listings/new">Start listing now</Link>
+            </Button>
+            <Button asChild size="lg" variant="ghost" className="h-12 justify-center">
+              <Link href="/host/dashboard">Open host dashboard</Link>
+            </Button>
+          </div>
+        </Card>
+      </section>
+    </div>
+  );
+}

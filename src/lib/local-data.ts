@@ -1,4 +1,4 @@
-import type { AppAccessRole } from "@/lib/session";
+import { readLocalSession, type AppAccessRole } from "@/lib/session";
 import type { ListingWizardInput } from "@/lib/validators/listing";
 import { buildListingThumbnail } from "@/lib/listing-thumbnail";
 
@@ -46,6 +46,36 @@ export interface ListingInventoryItem extends ListingBaseRecord {
   totalUnits: number;
   availableUnits: number;
   blacklisted: boolean;
+  hostUserPhone?: string;
+}
+
+export type HostContactChannel = "in_app_chat" | "visit_request" | "call_request";
+
+export interface HostResponsePreference {
+  preferredChannel: HostContactChannel;
+  responseWindow: "within_1_hour" | "within_4_hours" | "within_24_hours";
+  availabilityNote: string;
+}
+
+export interface HostProfileRecord {
+  id: string;
+  userPhone: string;
+  displayName: string;
+  profilePhoto: string;
+  verified: boolean;
+  joinedAt: number;
+  responsePreference: HostResponsePreference;
+}
+
+export interface PublicHostProfile {
+  id: string;
+  displayName: string;
+  profilePhoto: string;
+  verified: boolean;
+  joinedAt: number;
+  responsePreference: HostResponsePreference;
+  contactOptions: HostContactChannel[];
+  activeListings: Array<Pick<ListingInventoryItem, "id" | "slug" | "title" | "city" | "locality" | "thumbnail" | "verified">>;
 }
 
 export interface BookingRecord {
@@ -76,6 +106,40 @@ export interface PaymentRecord {
   updatedAt: number;
 }
 
+export type LedgerStatus = "pending" | "processing" | "paid" | "failed";
+
+export interface TransactionRecord {
+  id: string;
+  paymentId: string;
+  bookingId: string;
+  listingId: string;
+  guestUserPhone: string;
+  hostUserPhone: string | null;
+  amount: number;
+  status: LedgerStatus;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface PayoutRecord {
+  id: string;
+  transactionId: string;
+  paymentId: string;
+  bookingId: string;
+  listingId: string;
+  hostUserPhone: string;
+  amount: number;
+  status: LedgerStatus;
+  createdAt: number;
+  updatedAt: number;
+  completedAt: number | null;
+  note: string | null;
+}
+
+export interface PayoutProcessor {
+  transitionPayout(input: { payout: PayoutRecord; nextStatus: LedgerStatus; note?: string }): { status: LedgerStatus; note?: string };
+}
+
 export interface ReviewRecord {
   id: string;
   listingId: string;
@@ -97,10 +161,13 @@ export interface TrafficEvent {
 
 const storageKeys = {
   users: "nestmate.users.v1",
+  hostProfiles: "nestmate.host-profiles.v1",
   loginEvents: "nestmate.login-events.v1",
   listings: "nestmate.listing-inventory.v1",
   bookings: "nestmate.bookings.v1",
   payments: "nestmate.payments.v1",
+  transactions: "nestmate.transactions.v1",
+  payouts: "nestmate.payouts.v1",
   traffic: "nestmate.traffic.v1",
   visitor: "nestmate.visitor-id.v1",
   reviews: "nestmate.reviews.v1",
@@ -185,12 +252,51 @@ function buildMapPosition(seed: string) {
   };
 }
 
+function buildHostAvatar(displayName: string) {
+  const initial = (displayName.trim().charAt(0) || "H").toUpperCase();
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#0f766e'/><stop offset='100%' stop-color='#f97316'/></linearGradient></defs><rect width='128' height='128' rx='30' fill='url(#g)'/><text x='50%' y='54%' dominant-baseline='middle' text-anchor='middle' font-size='54' font-family='system-ui, sans-serif' font-weight='700' fill='white'>${initial}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function defaultResponsePreference(): HostResponsePreference {
+  return {
+    preferredChannel: "in_app_chat",
+    responseWindow: "within_4_hours",
+    availabilityNote: "Best available between 9 AM and 9 PM.",
+  };
+}
+
+function mapPaymentStatusToLedgerStatus(status: PaymentRecord["status"]): LedgerStatus {
+  if (status === "paid") return "paid";
+  if (status === "refund_requested") return "processing";
+  if (status === "refunded") return "failed";
+  return "pending";
+}
+
+function getBookingByIdFromList(bookings: BookingRecord[], bookingId: string) {
+  return bookings.find((booking) => booking.id === bookingId) ?? null;
+}
+
+function getListingByIdFromList(listings: ListingInventoryItem[], listingId: string) {
+  return listings.find((listing) => listing.id === listingId) ?? null;
+}
+
+const manualPayoutProcessor: PayoutProcessor = {
+  transitionPayout(input) {
+    return {
+      status: input.nextStatus,
+      note: input.note,
+    };
+  },
+};
+
 type LegacyListingLike = Partial<ListingBaseRecord> &
   Partial<ListingInventoryItem> & {
     kind?: ListingInventoryItem["kind"];
     totalUnits?: number;
     availableUnits?: number;
     blacklisted?: boolean;
+    hostUserPhone?: string;
   };
 
 function normalizeListingRecord(property: LegacyListingLike): ListingInventoryItem {
@@ -233,9 +339,142 @@ function normalizeListingRecord(property: LegacyListingLike): ListingInventoryIt
         status: property.status ?? "draft",
       }),
     kind,
-    totalUnits: property.totalUnits ?? (spaceType === "bed" ? 2 : 12),
-    availableUnits: property.availableUnits ?? (spaceType === "bed" ? 2 : 8),
+    totalUnits: property.totalUnits ?? 0,
+    availableUnits: property.availableUnits ?? 0,
     blacklisted: property.blacklisted ?? false,
+    hostUserPhone: typeof property.hostUserPhone === "string" ? property.hostUserPhone : undefined,
+  };
+}
+
+export function getHostProfiles() {
+  return readList<HostProfileRecord>(storageKeys.hostProfiles, []);
+}
+
+export function upsertHostProfile(input: {
+  userPhone: string;
+  displayName?: string;
+  verified?: boolean;
+  joinedAt?: number;
+  profilePhoto?: string;
+  responsePreference?: Partial<HostResponsePreference>;
+}) {
+  const profiles = getHostProfiles();
+  const existing = profiles.find((profile) => profile.userPhone === input.userPhone);
+
+  if (existing) {
+    existing.displayName = input.displayName?.trim() || existing.displayName;
+    existing.verified = input.verified ?? existing.verified;
+    existing.joinedAt = input.joinedAt ?? existing.joinedAt;
+    existing.profilePhoto = input.profilePhoto ?? existing.profilePhoto;
+    existing.responsePreference = {
+      ...existing.responsePreference,
+      ...input.responsePreference,
+    };
+  } else {
+    const displayName = input.displayName?.trim() || "Nestmate host";
+    profiles.push({
+      id: makeId("hst"),
+      userPhone: input.userPhone,
+      displayName,
+      profilePhoto: input.profilePhoto ?? buildHostAvatar(displayName),
+      verified: input.verified ?? false,
+      joinedAt: input.joinedAt ?? Date.now(),
+      responsePreference: {
+        ...defaultResponsePreference(),
+        ...input.responsePreference,
+      },
+    });
+  }
+
+  writeList(storageKeys.hostProfiles, profiles);
+  return profiles.find((profile) => profile.userPhone === input.userPhone) ?? null;
+}
+
+function buildFallbackHostProfile(listing: ListingInventoryItem): PublicHostProfile {
+  const displayName = `${listing.city} host team`;
+  return {
+    id: `fallback-${listing.id}`,
+    displayName,
+    profilePhoto: buildHostAvatar(displayName),
+    verified: listing.verified,
+    joinedAt: Date.now(),
+    responsePreference: {
+      preferredChannel: "in_app_chat",
+      responseWindow: "within_24_hours",
+      availabilityNote: "Contact through in-app chat for a response from the host team.",
+    },
+    contactOptions: ["in_app_chat", "visit_request"],
+    activeListings: [
+      {
+        id: listing.id,
+        slug: listing.slug,
+        title: listing.title,
+        city: listing.city,
+        locality: listing.locality,
+        thumbnail: listing.thumbnail,
+        verified: listing.verified,
+      },
+    ],
+  };
+}
+
+export function getHostProfileForListing(listing: ListingInventoryItem): PublicHostProfile {
+  const hostPhone = listing.hostUserPhone;
+  if (!hostPhone) {
+    return buildFallbackHostProfile(listing);
+  }
+
+  const profile = getHostProfiles().find((entry) => entry.userPhone === hostPhone);
+  const users = getUsers();
+  const user = users.find((entry) => entry.phone === hostPhone);
+  const inventory = getListingInventory();
+  const activeListings = inventory
+    .filter((item) => item.hostUserPhone === hostPhone && item.status === "published" && !item.blacklisted)
+    .slice(0, 6)
+    .map((item) => ({
+      id: item.id,
+      slug: item.slug,
+      title: item.title,
+      city: item.city,
+      locality: item.locality,
+      thumbnail: item.thumbnail,
+      verified: item.verified,
+    }));
+
+  if (!profile) {
+    const inferredName = user?.name || "Nestmate host";
+    const inferred = upsertHostProfile({
+      userPhone: hostPhone,
+      displayName: inferredName,
+      verified: Boolean(user && user.role !== "guest"),
+      joinedAt: user?.createdAt,
+    });
+
+    if (!inferred) {
+      return buildFallbackHostProfile(listing);
+    }
+
+    return {
+      id: inferred.id,
+      displayName: inferred.displayName,
+      profilePhoto: inferred.profilePhoto,
+      verified: inferred.verified,
+      joinedAt: inferred.joinedAt,
+      responsePreference: inferred.responsePreference,
+      contactOptions: ["in_app_chat", "visit_request", "call_request"],
+      activeListings,
+    };
+  }
+
+  return {
+    id: profile.id,
+    displayName: profile.displayName,
+    profilePhoto: profile.profilePhoto,
+    verified: profile.verified,
+    joinedAt: profile.joinedAt,
+    responsePreference: profile.responsePreference,
+    contactOptions: ["in_app_chat", "visit_request", "call_request"],
+    activeListings,
   };
 }
 
@@ -312,6 +551,8 @@ export function deleteListingById(listingId: string) {
 export function createListingFromWizard(input: ListingWizardInput) {
   const listings = getListingInventory();
   const now = Date.now();
+  const localSession = readLocalSession();
+  const hostUserPhone = localSession && localSession.role !== "guest" ? localSession.phone : undefined;
   const slugBase = toSlug(`${input.title}-${input.city}-${input.locality}`);
   const slug = listings.some((listing) => listing.slug === slugBase) ? `${slugBase}-${now.toString(36)}` : slugBase;
   const listing: ListingInventoryItem = {
@@ -334,9 +575,10 @@ export function createListingFromWizard(input: ListingWizardInput) {
     amenities: input.amenities,
     mapPosition: buildMapPosition(slug),
     kind: inferListingKindFromWizard(input.propertyType),
-    totalUnits: input.propertyType === "bed" ? 2 : 8,
-    availableUnits: input.propertyType === "bed" ? 2 : 6,
+    totalUnits: 0,
+    availableUnits: 0,
     blacklisted: false,
+    hostUserPhone,
     thumbnail: buildListingThumbnail({
       title: input.title,
       city: input.city,
@@ -348,6 +590,15 @@ export function createListingFromWizard(input: ListingWizardInput) {
       reviewCount: 0,
     }),
   };
+
+  if (hostUserPhone) {
+    upsertHostProfile({
+      userPhone: hostUserPhone,
+      displayName: localSession?.name,
+      joinedAt: localSession?.signedInAt,
+      verified: false,
+    });
+  }
 
   updateListingInventory([listing, ...listings]);
   return listing;
@@ -377,6 +628,16 @@ export function upsertUserOnLogin(input: { phone: string; name: string; role: Ap
 
   writeList(storageKeys.users, users);
 
+  const currentUser = users.find((user) => user.phone === input.phone) ?? null;
+  if (currentUser && currentUser.role !== "guest") {
+    upsertHostProfile({
+      userPhone: currentUser.phone,
+      displayName: currentUser.name,
+      joinedAt: currentUser.createdAt,
+      verified: currentUser.role === "admin",
+    });
+  }
+
   const events = readList<LoginEvent>(storageKeys.loginEvents, []);
   events.unshift({
     id: makeId("lgn"),
@@ -386,7 +647,7 @@ export function upsertUserOnLogin(input: { phone: string; name: string; role: Ap
   });
   writeList(storageKeys.loginEvents, events.slice(0, 200));
 
-  return users.find((user) => user.phone === input.phone) ?? null;
+  return currentUser;
 }
 
 export function getUsers() {
@@ -432,7 +693,7 @@ export function createBooking(input: {
     throw new Error("This listing is currently unavailable.");
   }
 
-  if (input.quantity > listing.availableUnits) {
+  if (listing.availableUnits > 0 && input.quantity > listing.availableUnits) {
     throw new Error("Requested quantity is not available.");
   }
 
@@ -462,7 +723,7 @@ export function createBooking(input: {
     item.id === listing.id
       ? {
           ...item,
-          availableUnits: Math.max(0, item.availableUnits - input.quantity),
+          availableUnits: item.availableUnits > 0 ? Math.max(0, item.availableUnits - input.quantity) : 0,
         }
       : item,
   );
@@ -474,6 +735,133 @@ export function createBooking(input: {
 export function getPayments(userPhone?: string) {
   const allPayments = readList<PaymentRecord>(storageKeys.payments, []);
   return userPhone ? allPayments.filter((payment) => payment.userPhone === userPhone) : allPayments;
+}
+
+export function getTransactions(userPhone?: string) {
+  const allTransactions = readList<TransactionRecord>(storageKeys.transactions, []);
+  return userPhone ? allTransactions.filter((transaction) => transaction.guestUserPhone === userPhone || transaction.hostUserPhone === userPhone) : allTransactions;
+}
+
+export function getPayouts(hostUserPhone?: string) {
+  const allPayouts = readList<PayoutRecord>(storageKeys.payouts, []);
+  return hostUserPhone ? allPayouts.filter((payout) => payout.hostUserPhone === hostUserPhone) : allPayouts;
+}
+
+export function getPendingPayouts() {
+  return getPayouts().filter((payout) => payout.status === "pending");
+}
+
+function upsertTransactionForPayment(payment: PaymentRecord) {
+  const transactions = readList<TransactionRecord>(storageKeys.transactions, []);
+  const bookings = getBookings();
+  const booking = getBookingByIdFromList(bookings, payment.bookingId);
+  const listings = getListingInventory();
+  const listing = booking ? getListingByIdFromList(listings, booking.listingId) : null;
+  const hostUserPhone = listing?.hostUserPhone ?? null;
+  const status = mapPaymentStatusToLedgerStatus(payment.status);
+
+  const existing = transactions.find((transaction) => transaction.paymentId === payment.id);
+  if (existing) {
+    existing.status = status;
+    existing.amount = payment.amount;
+    existing.hostUserPhone = hostUserPhone;
+    existing.updatedAt = Date.now();
+    writeList(storageKeys.transactions, transactions);
+    return existing;
+  }
+
+  if (!booking) {
+    return null;
+  }
+
+  const created: TransactionRecord = {
+    id: makeId("txn"),
+    paymentId: payment.id,
+    bookingId: booking.id,
+    listingId: booking.listingId,
+    guestUserPhone: payment.userPhone,
+    hostUserPhone,
+    amount: payment.amount,
+    status,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  transactions.unshift(created);
+  writeList(storageKeys.transactions, transactions);
+  return created;
+}
+
+function ensurePayoutForTransaction(transaction: TransactionRecord) {
+  if (!transaction.hostUserPhone || transaction.status !== "paid") {
+    return null;
+  }
+
+  const payouts = readList<PayoutRecord>(storageKeys.payouts, []);
+  const existing = payouts.find((payout) => payout.transactionId === transaction.id);
+  if (existing) {
+    return existing;
+  }
+
+  const payout: PayoutRecord = {
+    id: makeId("pyt"),
+    transactionId: transaction.id,
+    paymentId: transaction.paymentId,
+    bookingId: transaction.bookingId,
+    listingId: transaction.listingId,
+    hostUserPhone: transaction.hostUserPhone,
+    amount: transaction.amount,
+    status: "pending",
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    completedAt: null,
+    note: null,
+  };
+
+  payouts.unshift(payout);
+  writeList(storageKeys.payouts, payouts);
+  return payout;
+}
+
+export function updatePayoutStatus(input: {
+  payoutId: string;
+  nextStatus: LedgerStatus;
+  note?: string;
+  processor?: PayoutProcessor;
+}) {
+  const payouts = readList<PayoutRecord>(storageKeys.payouts, []);
+  const payout = payouts.find((entry) => entry.id === input.payoutId);
+  if (!payout) {
+    throw new Error("Payout record not found.");
+  }
+
+  const transition = (input.processor ?? manualPayoutProcessor).transitionPayout({
+    payout,
+    nextStatus: input.nextStatus,
+    note: input.note,
+  });
+
+  payout.status = transition.status;
+  payout.note = transition.note ?? payout.note;
+  payout.updatedAt = Date.now();
+  payout.completedAt = transition.status === "paid" ? Date.now() : null;
+
+  writeList(storageKeys.payouts, payouts);
+  return payout;
+}
+
+export function setPayoutNote(input: { payoutId: string; note: string }) {
+  const payouts = readList<PayoutRecord>(storageKeys.payouts, []);
+  const payout = payouts.find((entry) => entry.id === input.payoutId);
+  if (!payout) {
+    throw new Error("Payout record not found.");
+  }
+
+  payout.note = input.note;
+  payout.updatedAt = Date.now();
+
+  writeList(storageKeys.payouts, payouts);
+  return payout;
 }
 
 export function getReviews(listingId?: string) {
@@ -556,6 +944,10 @@ export function createPaymentForBooking(input: { bookingId: string; userPhone: s
 
   payments.unshift(payment);
   writeList(storageKeys.payments, payments);
+
+  // Track the guest-to-platform money movement in ledger form.
+  upsertTransactionForPayment(payment);
+
   return payment;
 }
 
@@ -576,6 +968,11 @@ export function setPaymentStatus(paymentId: string, status: PaymentRecord["statu
   const payment = updatedPayments.find((item) => item.id === paymentId);
 
   if (payment) {
+    const transaction = upsertTransactionForPayment(payment);
+    if (transaction) {
+      ensurePayoutForTransaction(transaction);
+    }
+
     const bookings = readList<BookingRecord>(storageKeys.bookings, []);
     const bookingStatus = status === "paid" ? "confirmed" : status === "refunded" ? "cancelled" : "pending";
     const updatedBookings = bookings.map((booking) =>

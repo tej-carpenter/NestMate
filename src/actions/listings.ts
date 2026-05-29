@@ -3,8 +3,7 @@
 import { listingWizardSchema } from "@/lib/validators/listing";
 
 export async function createListingDraftAction(input: unknown) {
-  const draft = listingWizardSchema.partial().parse(input);
-  return { saved: true, draft } as const;
+  return { saved: true, draft: input } as const;
 }
 
 export async function publishListingAction(input: unknown) {

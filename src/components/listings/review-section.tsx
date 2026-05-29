@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -20,27 +20,21 @@ type Review = {
 
 export default function ReviewSection({ listingId, listingSlug }: { listingId: string; listingSlug: string }) {
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<ReturnType<typeof readLocalSession>>(null);
   const [text, setText] = useState("");
   const [rating, setRating] = useState(5);
   const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    setSession(readLocalSession());
-    setReviews(getReviews(listingId));
+    const handle = window.setTimeout(() => {
+      setSession(readLocalSession());
+      setReviews(getReviews(listingId));
+    }, 0);
+
+    return () => window.clearTimeout(handle);
   }, [listingId]);
 
-  const canReview = !!session && !!session.phone && reviews && (() => {
-    // verify user has bookings client-side via local-data
-    try {
-      // simple optimistic check; createReview will enforce server-side guard
-      return true;
-    } catch {
-      return false;
-    }
-  })();
-
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!session) {
       setStatus("Please login to submit a review.");
@@ -87,7 +81,7 @@ export default function ReviewSection({ listingId, listingSlug }: { listingId: s
         <p className="text-sm font-semibold">Leave a review</p>
         <p className="mt-2 text-sm text-[color:var(--muted)]">Only users who booked this property can submit a review.</p>
         <form className="mt-3 grid gap-2" onSubmit={handleSubmit}>
-          <Input value={rating} onChange={(e: any) => setRating(Number(e.target.value) || 5)} type="number" min={1} max={5} />
+          <Input value={rating} onChange={(e: ChangeEvent<HTMLInputElement>) => setRating(Number(e.target.value) || 5)} type="number" min={1} max={5} />
           <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Share your experience (optional)" />
           <div className="flex items-center gap-2">
             <Button type="submit" disabled={!session}>Submit review</Button>

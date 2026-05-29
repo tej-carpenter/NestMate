@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CalendarDays, ChevronDown, CreditCard, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
@@ -12,7 +12,7 @@ import { createBooking, createPaymentForBooking, getListingBySlug } from "@/lib/
 import { formatPricePeriod } from "@/lib/pricing";
 import { readLocalSession } from "@/lib/session";
 
-export default function BookingPage({ params }: { params: { slug: string } }) {
+export default function BookingPage({ params }: { params: Promise<{ slug: string }> | { slug: string } }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [session, setSession] = useState<ReturnType<typeof readLocalSession>>(null);
@@ -25,15 +25,17 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
   const [status, setStatus] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const resolvedParams = use(params as Promise<{ slug: string }>);
+
   useEffect(() => {
     const handle = window.setTimeout(() => {
       setSession(readLocalSession());
-      setListing(getListingBySlug(params.slug));
+      setListing(getListingBySlug(resolvedParams.slug));
       setMounted(true);
     }, 0);
 
     return () => window.clearTimeout(handle);
-  }, [params.slug]);
+  }, [resolvedParams.slug]);
 
   const moveInTotal = listing ? listing.price * 1 : 0;
 
@@ -65,6 +67,7 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
   const selectedListing = listing;
   const isGuest = session?.role === "guest";
   const hasResidentFeedback = (selectedListing.reviewCount ?? 0) > 0;
+  const hasAvailabilityData = selectedListing.totalUnits > 0 && selectedListing.availableUnits > 0;
 
   function handleCreateBooking(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -192,9 +195,9 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
               <Input
                 type="number"
                 min={1}
-                max={selectedListing.availableUnits}
+                max={Math.max(1, selectedListing.availableUnits)}
                 value={quantity}
-                onChange={(event) => setQuantity(Math.min(selectedListing.availableUnits, Math.max(1, Number(event.target.value) || 1)))}
+                onChange={(event) => setQuantity(Math.min(Math.max(1, selectedListing.availableUnits), Math.max(1, Number(event.target.value) || 1)))}
               />
             </label>
             <label className="space-y-2 sm:col-span-2">
@@ -231,8 +234,7 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
             <summary className="cursor-pointer list-none text-sm font-semibold text-slate-950 dark:text-slate-50">More booking context</summary>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               {[
-                { label: "Available units", value: selectedListing.availableUnits },
-                { label: "Total units", value: selectedListing.totalUnits },
+                { label: "Availability", value: hasAvailabilityData ? `${selectedListing.availableUnits}/${selectedListing.totalUnits}` : "Not listed yet" },
                 { label: "Move-in total", value: formatRupee(moveInTotal) },
                 { label: "Login required", value: session ? session.name : "Yes" },
               ].map((item) => (
@@ -250,7 +252,7 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
         </Card>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[color:var(--border)] bg-[color:var(--surface)]/95 p-3 backdrop-blur sm:hidden">
+      <div className="fixed inset-x-0 bottom-[5.25rem] z-40 border-t border-[color:var(--border)] bg-[color:var(--surface)]/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:hidden">
         <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-1">
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Move-in total</p>

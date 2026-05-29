@@ -62,9 +62,23 @@ export interface TransactionRecord {
   amount: number;
   transaction_type: "booking" | "deposit" | "refund" | "wallet_topup" | "payout";
   payment_method: "upi" | "card" | "wallet" | "emi";
-  payment_status: "pending" | "paid" | "failed" | "refunded";
+  payment_status: "pending" | "processing" | "paid" | "failed";
   razorpay_transaction_id: string | null;
   created_at: string;
+}
+
+export interface PayoutRecord {
+  id: string;
+  transaction_id: string;
+  booking_id: string;
+  host_id: string;
+  amount: number;
+  payout_status: "pending" | "processing" | "paid" | "failed";
+  payout_processor: "manual" | "automated";
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  note: string | null;
 }
 
 export interface MessageRecord {

@@ -13,7 +13,7 @@ import { geocodeListing, geocodeQuery } from "@/lib/nominatim";
 const LeafletMap = dynamic(() => import("./leaflet-map"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[420px] items-center justify-center rounded-[2rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] text-sm text-[color:var(--muted)] sm:h-[520px] lg:h-[700px]">
+    <div className="flex h-[clamp(20rem,50dvh,30rem)] items-center justify-center rounded-[2rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] text-sm text-[color:var(--muted)] sm:h-[clamp(22rem,46dvh,34rem)] lg:h-[32rem]">
       Loading Leaflet map...
     </div>
   ),
@@ -105,7 +105,11 @@ export function MapShell() {
 
   // Hydrate from client storage after mount to avoid SSR/client markup mismatch.
   useEffect(() => {
-    setListings(getListingInventory());
+    const handle = window.setTimeout(() => {
+      setListings(getListingInventory());
+    }, 0);
+
+    return () => window.clearTimeout(handle);
   }, []);
 
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
@@ -139,11 +143,11 @@ export function MapShell() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.18fr_0.92fr] lg:items-start">
-      <Card className="p-6 sm:p-8 lg:self-start">
+      <Card className="order-2 p-5 sm:p-8 lg:order-1 lg:self-start">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-800 dark:text-teal-300">Map discovery</p>
-            <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl text-slate-950 dark:text-slate-50">Leaflet + OpenStreetMap + Nominatim</h1>
+            <h1 className="mt-2 text-balance font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50 sm:text-4xl">Leaflet + OpenStreetMap + Nominatim</h1>
             <p className="mt-4 text-base leading-7 text-slate-600 dark:text-slate-300">
               Listings are geocoded through Nominatim and plotted on OpenStreetMap tiles using React Leaflet.
             </p>
@@ -195,8 +199,8 @@ export function MapShell() {
         </div>
       </Card>
 
-      <Card className="overflow-hidden p-3 sm:p-4 lg:sticky lg:top-24 lg:self-start">
-        <div className="rounded-[2rem] bg-[color:var(--surface-strong)] p-2 shadow-lg shadow-slate-900/5">
+      <Card className="order-1 overflow-hidden p-2 sm:p-4 lg:order-2 lg:sticky lg:top-24 lg:self-start lg:min-h-0">
+        <div className="overflow-hidden rounded-[2rem] bg-[color:var(--surface-strong)] p-2 shadow-lg shadow-slate-900/5">
           <LeafletMap points={mapPoints} searchPoint={searchPoint} />
         </div>
         {searchPoint ? (

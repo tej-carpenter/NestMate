@@ -43,7 +43,7 @@ function MapClickHandler({ onPick }: { onPick: (point: LocationPoint) => void })
 
 export function LocationPickerMap({ value, onPick }: { value: LocationPoint | null; onPick: (point: LocationPoint) => void }) {
 	return (
-		<StableMapContainer center={indiaCenter} zoom={5} scrollWheelZoom className="leaflet-container h-[320px] w-full rounded-[1.75rem] sm:h-[380px] lg:h-[460px]">
+		<StableMapContainer center={indiaCenter} zoom={5} scrollWheelZoom className="leaflet-container h-[clamp(16rem,34dvh,22rem)] w-full rounded-[1.75rem] sm:h-[clamp(18rem,30dvh,24rem)] lg:h-[24rem]">
 			<TileLayer
 				attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 				url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

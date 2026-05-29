@@ -9,7 +9,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const summary = resolvedSearchParams.city ? `Results for ${resolvedSearchParams.city}` : "Browse verified accommodation across India";
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 pb-24 pt-8 sm:px-6 sm:pt-10 lg:px-8 lg:pt-12">
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 pb-32 pt-8 sm:px-6 sm:pb-24 sm:pt-10 lg:px-8 lg:pt-12">
       <section className="overflow-hidden rounded-[2.5rem] border border-[color:var(--border)] bg-[linear-gradient(135deg,rgba(15,118,110,0.12),rgba(255,255,255,0.94),rgba(20,184,166,0.08))] shadow-[0_26px_70px_-40px_rgba(15,23,42,0.32)] dark:bg-[linear-gradient(135deg,rgba(15,118,110,0.20),rgba(15,23,42,0.92),rgba(20,184,166,0.10))]">
         <div className="grid gap-4 p-5 sm:p-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:p-10">
           <div className="space-y-4">

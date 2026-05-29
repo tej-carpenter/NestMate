@@ -9,7 +9,7 @@ import type { ListingInventoryItem } from "@/lib/local-data";
 
 const LeafletMap = dynamic(() => import("@/components/map/leaflet-map"), {
   ssr: false,
-  loading: () => <div className="flex h-[320px] items-center justify-center rounded-[2rem] bg-[color:var(--surface-strong)] text-sm text-[color:var(--muted)] sm:h-[380px] lg:h-[460px]">Loading map preview...</div>,
+  loading: () => <div className="flex h-[clamp(16rem,34dvh,22rem)] items-center justify-center rounded-[2rem] bg-[color:var(--surface-strong)] text-sm text-[color:var(--muted)] sm:h-[clamp(18rem,30dvh,24rem)] lg:h-[24rem]">Loading map preview...</div>,
 });
 
 export function PropertyMapPreview({ listing }: { listing: ListingInventoryItem }) {

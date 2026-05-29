@@ -58,7 +58,7 @@ export function SearchFilters() {
   ].filter(Boolean);
 
   return (
-    <section className="glass-panel rounded-[2rem] border border-[color:var(--border)] p-4 shadow-sm shadow-slate-900/5 sm:p-6">
+    <section className="glass-panel rounded-[2rem] border border-[color:var(--border)] p-4 pb-24 shadow-sm shadow-slate-900/5 sm:p-6 sm:pb-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Badge className="bg-teal-50 text-teal-950 dark:bg-teal-500/15 dark:text-teal-100">Quick search</Badge>
@@ -155,10 +155,10 @@ export function SearchFilters() {
         <Button type="button" onClick={applyFilters}>Apply filters</Button>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[color:var(--border)] bg-[color:var(--surface)]/96 p-3 backdrop-blur sm:hidden">
+      <div className="fixed inset-x-0 bottom-[5.25rem] z-40 border-t border-[color:var(--border)] bg-[color:var(--surface)]/96 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:hidden">
         <div className="mx-auto flex w-full max-w-7xl gap-3 px-1">
-          <Button type="button" variant="outline" className="flex-1" onClick={() => router.push("/search")}>Reset</Button>
-          <Button type="button" className="flex-1" onClick={applyFilters}>Apply filters</Button>
+          <Button type="button" variant="outline" className="h-12 flex-1" onClick={() => router.push("/search")}>Reset</Button>
+          <Button type="button" className="h-12 flex-1" onClick={applyFilters}>Apply filters</Button>
         </div>
       </div>
     </section>

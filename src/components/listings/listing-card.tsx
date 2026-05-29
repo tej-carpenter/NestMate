@@ -73,6 +73,10 @@ function formatAvailability(listing: ListingInventoryItem) {
     return { label: "Unavailable", tone: "danger" as const, width: 0 };
   }
 
+  if (listing.totalUnits <= 0 || listing.availableUnits <= 0) {
+    return { label: "Availability not listed yet", tone: "muted" as const, width: 0 };
+  }
+
   const occupied = Math.max(0, listing.totalUnits - listing.availableUnits);
   const width = listing.totalUnits > 0 ? Math.round((occupied / listing.totalUnits) * 100) : 0;
 
@@ -138,7 +142,7 @@ function ListingCard({ listing, compact = false, className }: ListingCardProps) 
           <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
             <div className="max-w-[75%]">
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/70">{listing.city}</p>
-              <h3 className="mt-1 text-2xl font-semibold leading-tight text-white drop-shadow-sm sm:text-[1.7rem]">{listing.title}</h3>
+              <h3 className="mt-1 line-clamp-2 break-words text-2xl font-semibold leading-tight text-white drop-shadow-sm sm:text-[1.7rem]">{listing.title}</h3>
             </div>
             <div className="hidden shrink-0 rounded-[var(--radius-md)] border border-white/20 bg-white/12 px-3 py-2 text-right text-white shadow-sm backdrop-blur sm:block">
               <p className="text-lg font-semibold">{formatRupee(listing.price)}</p>
@@ -167,9 +171,16 @@ function ListingCard({ listing, compact = false, className }: ListingCardProps) 
           <p className={cn("text-sm leading-6 text-slate-600 dark:text-slate-300", compact && "line-clamp-2")}>{description}</p>
 
           <div className="space-y-2 rounded-[1.25rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4">
-            <div className="flex items-center justify-between gap-3 text-sm">
+            <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <span className="font-semibold text-slate-950 dark:text-slate-50">Availability</span>
-              <span className={cn("font-medium", availability.tone === "danger" && "text-rose-600 dark:text-rose-400", availability.tone === "warn" && "text-amber-600 dark:text-amber-300", availability.tone === "success" && "text-emerald-600 dark:text-emerald-300")}>
+              <span className={cn(
+                "break-words",
+                "font-medium",
+                availability.tone === "danger" && "text-rose-600 dark:text-rose-400",
+                availability.tone === "warn" && "text-amber-600 dark:text-amber-300",
+                availability.tone === "success" && "text-emerald-600 dark:text-emerald-300",
+                availability.tone === "muted" && "text-slate-500 dark:text-slate-400",
+              )}>
                 {availability.label}
               </span>
             </div>
@@ -180,6 +191,7 @@ function ListingCard({ listing, compact = false, className }: ListingCardProps) 
                   availability.tone === "danger" && "bg-rose-500",
                   availability.tone === "warn" && "bg-amber-500",
                   availability.tone === "success" && "bg-teal-600",
+                  availability.tone === "muted" && "bg-slate-400/50",
                 )}
                 style={{ width: `${availability.width}%` }}
               />

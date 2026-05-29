@@ -64,7 +64,10 @@ export function AccountActions() {
       )}
 
       <Button asChild size="sm" className="px-3 sm:px-4">
-        <Link href="/host/listings/new">List a property</Link>
+        <Link href="/host/listings/new">
+          <span className="sm:hidden">List</span>
+          <span className="hidden sm:inline">List a property</span>
+        </Link>
       </Button>
     </div>
   );

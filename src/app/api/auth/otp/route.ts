@@ -25,7 +25,6 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const identifier = parsed.data.phone ?? parsed.data.email;
 
   if (parsed.data.mode === "request") {
     const { error } = await supabase.auth.signInWithOtp(parsed.data.email ? { email: parsed.data.email } : { phone: parsed.data.phone ?? "" });

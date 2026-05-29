@@ -5,7 +5,19 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
-import { deleteListingById, getBookings, getListingInventory, getPayments, getTrafficEvents, getUsers, updateListingById } from "@/lib/local-data";
+import {
+  deleteListingById,
+  getBookings,
+  getListingInventory,
+  getPayments,
+  getPayouts,
+  getTrafficEvents,
+  getTransactions,
+  getUsers,
+  updateListingById,
+  updatePayoutStatus,
+} from "@/lib/local-data";
+import { formatDateTime, formatRupee } from "@/lib/format";
 
 export default function AdminDashboardPage() {
   const [mounted, setMounted] = useState(false);
@@ -13,6 +25,8 @@ export default function AdminDashboardPage() {
   const [users, setUsers] = useState<ReturnType<typeof getUsers>>([]);
   const [bookings, setBookings] = useState<ReturnType<typeof getBookings>>([]);
   const [payments, setPayments] = useState<ReturnType<typeof getPayments>>([]);
+  const [transactions, setTransactions] = useState<ReturnType<typeof getTransactions>>([]);
+  const [payouts, setPayouts] = useState<ReturnType<typeof getPayouts>>([]);
   const [traffic, setTraffic] = useState<ReturnType<typeof getTrafficEvents>>([]);
   const [refreshToken, setRefreshToken] = useState(0);
 
@@ -24,6 +38,8 @@ export default function AdminDashboardPage() {
       setUsers(getUsers());
       setBookings(getBookings());
       setPayments(getPayments());
+      setTransactions(getTransactions());
+      setPayouts(getPayouts());
       setTraffic(getTrafficEvents());
       setMounted(true);
     }, 0);
@@ -54,6 +70,7 @@ export default function AdminDashboardPage() {
   const blacklistedListings = listings.filter((listing) => listing.blacklisted);
   const bookedListingIds = new Set(bookings.filter((booking) => booking.status === "confirmed").map((booking) => booking.listingId));
   const totalVisitors = new Set(traffic.map((event) => event.visitorId)).size;
+  const pendingPayouts = payouts.filter((payout) => payout.status === "pending");
   const routeCounts = traffic.reduce<Record<string, number>>((acc, event) => {
     acc[event.route] = (acc[event.route] ?? 0) + 1;
     return acc;
@@ -81,6 +98,27 @@ export default function AdminDashboardPage() {
     refresh();
   }
 
+  function completePayout(payoutId: string) {
+    updatePayoutStatus({
+      payoutId,
+      nextStatus: "paid",
+      note: "Completed manually by admin.",
+    });
+    refresh();
+  }
+
+  function formatAvailability(listing: (typeof listings)[number]) {
+    if (listing.blacklisted) {
+      return "Unavailable";
+    }
+
+    if (listing.totalUnits <= 0 || listing.availableUnits <= 0) {
+      return "Availability not listed yet";
+    }
+
+    return `${listing.availableUnits}/${listing.totalUnits} available`;
+  }
+
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="space-y-6">
@@ -88,6 +126,11 @@ export default function AdminDashboardPage() {
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-300">Admin dashboard</p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl text-slate-950 dark:text-slate-50">Monitoring, moderation, and inventory health</h1>
           <p className="mt-4 text-base leading-7 text-slate-600 dark:text-slate-300">Track users, traffic, bookings, payment states, and listing status across hotels, PGs, hostels, rooms, and bedspaces.</p>
+          <div className="mt-5">
+            <Button asChild>
+              <Link href="/admin/payouts">Open payout operations</Link>
+            </Button>
+          </div>
         </Card>
 
         <div className="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
@@ -96,6 +139,9 @@ export default function AdminDashboardPage() {
             ["Unique visitors", String(totalVisitors)],
             ["Total bookings", String(bookings.length)],
             ["Total payments", String(payments.length)],
+            ["Tracked transactions", String(transactions.length)],
+            ["Payout records", String(payouts.length)],
+            ["Pending payouts", String(pendingPayouts.length)],
             ["Total listings", String(listings.length)],
             ["Booked listings", String(bookedListingIds.size)],
             ["Active listings", String(activeListings.length)],
@@ -129,6 +175,54 @@ export default function AdminDashboardPage() {
           </Card>
         </div>
 
+        <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+          <Card className="p-6 lg:self-start">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Transactions</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Guest-to-Nestmate payment ledger for reconciliation and payout readiness.</p>
+            <div className="mt-4 space-y-3">
+              {transactions.length > 0 ? (
+                transactions.slice(0, 8).map((transaction) => (
+                  <div key={transaction.id} className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">{formatRupee(transaction.amount)}</p>
+                      <Chip className="!rounded-full px-3 py-1 text-xs font-semibold">{transaction.status}</Chip>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Booking: {transaction.bookingId}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Host: {transaction.hostUserPhone ?? "Unassigned"}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Updated: {formatDateTime(transaction.updatedAt)}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-600 dark:text-slate-300">No transaction records yet.</p>
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-6 lg:self-start">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Pending payouts</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Manual host payout queue. Automation can replace status transitions later without changing domain records.</p>
+            <div className="mt-4 space-y-3">
+              {pendingPayouts.length > 0 ? (
+                pendingPayouts.map((payout) => (
+                  <div key={payout.id} className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">{formatRupee(payout.amount)}</p>
+                      <Chip className="!rounded-full px-3 py-1 text-xs font-semibold">{payout.status}</Chip>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Host: {payout.hostUserPhone}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Created: {formatDateTime(payout.createdAt)}</p>
+                    <div className="mt-3">
+                      <Button className="h-10" onClick={() => completePayout(payout.id)}>Mark as completed</Button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-600 dark:text-slate-300">No pending payouts.</p>
+              )}
+            </div>
+          </Card>
+        </div>
+
         <div className="grid gap-4 lg:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
           {listings.map((property) => (
             <Card key={property.id} className="min-h-72 p-6">
@@ -146,7 +240,7 @@ export default function AdminDashboardPage() {
                   <Chip key={amenity} className="!rounded-full px-3 py-1 text-xs font-medium">{amenity}</Chip>
                 ))}
               </div>
-              <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">Units: {property.availableUnits}/{property.totalUnits} available</p>
+              <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">Units: {formatAvailability(property)}</p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Button asChild variant="outline" className="sm:flex-1">
                   <Link href={`/host/listings/new?edit=${property.slug}`}>Edit</Link>

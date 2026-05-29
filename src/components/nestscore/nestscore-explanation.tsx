@@ -13,14 +13,18 @@ export function NestScoreExplanation() {
   const [listingCount, setListingCount] = useState(0);
 
   useEffect(() => {
-    const listings = getListingInventory();
-    const reviews = getReviews();
-    const reviewedIds = new Set(reviews.map((review) => review.listingId));
+    const handle = window.setTimeout(() => {
+      const listings = getListingInventory();
+      const reviews = getReviews();
+      const reviewedIds = new Set(reviews.map((review) => review.listingId));
 
-    setListingCount(listings.length);
-    setReviewCount(reviews.length);
-    setReviewedListings(reviewedIds.size);
-    setAwaitingFeedbackListings(listings.filter((listing) => !reviewedIds.has(listing.id)).length);
+      setListingCount(listings.length);
+      setReviewCount(reviews.length);
+      setReviewedListings(reviewedIds.size);
+      setAwaitingFeedbackListings(listings.filter((listing) => !reviewedIds.has(listing.id)).length);
+    }, 0);
+
+    return () => window.clearTimeout(handle);
   }, []);
 
   const overallState = useMemo(() => {

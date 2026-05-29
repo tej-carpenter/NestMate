@@ -10,11 +10,15 @@ export default function Stats() {
   const [bookingCount, setBookingCount] = useState(0);
 
   useEffect(() => {
-    const listings = getListingInventory();
-    setVerifiedCount(listings.filter((l) => l.verified).length);
-    setCityCount(new Set(listings.map((l) => l.city)).size);
-    const bookings = getBookings();
-    setBookingCount(bookings.length);
+    const handle = window.setTimeout(() => {
+      const listings = getListingInventory();
+      setVerifiedCount(listings.filter((l) => l.verified).length);
+      setCityCount(new Set(listings.map((l) => l.city)).size);
+      const bookings = getBookings();
+      setBookingCount(bookings.length);
+    }, 0);
+
+    return () => window.clearTimeout(handle);
   }, []);
 
   const stats = [

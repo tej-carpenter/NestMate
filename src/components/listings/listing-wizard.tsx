@@ -16,7 +16,7 @@ import dynamic from "next/dynamic";
 
 const LocationPickerMap = dynamic(() => import("@/components/map/location-picker-map").then((module) => module.LocationPickerMap), {
   ssr: false,
-  loading: () => <div className="flex h-[320px] items-center justify-center rounded-[1.75rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] text-sm text-[color:var(--muted)] sm:h-[380px] lg:h-[460px]">Loading location picker...</div>,
+  loading: () => <div className="flex h-[clamp(16rem,34dvh,22rem)] items-center justify-center rounded-[1.75rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] text-sm text-[color:var(--muted)] sm:h-[clamp(18rem,30dvh,24rem)] lg:h-[24rem]">Loading location picker...</div>,
 });
 
 const defaultValues: ListingWizardInput = {
@@ -103,7 +103,7 @@ export function ListingWizard() {
   const [isPending, startTransition] = useTransition();
   const hasHydratedDraftRef = useRef(false);
 
-  const { register, handleSubmit, control, reset, trigger, setValue, formState } = useForm<ListingWizardInput>({
+  const { register, handleSubmit, control, reset, trigger, setValue } = useForm<ListingWizardInput>({
     resolver: zodResolver(listingWizardSchema),
     defaultValues,
     mode: "onBlur",
@@ -187,7 +187,6 @@ export function ListingWizard() {
     return () => window.clearTimeout(handle);
   }, [stepIndex, uploadFiles, values]);
 
-  const step = stepDefinitions[stepIndex];
   const progress = useMemo(() => `${stepIndex + 1}/${stepDefinitions.length}`, [stepIndex]);
 
   async function nextStep() {
@@ -305,13 +304,13 @@ export function ListingWizard() {
               <span className="text-sm font-medium text-[color:var(--foreground)]">Locality</span>
               <Input {...register("locality")} placeholder="BTM Layout" />
             </label>
-            <div className="md:col-span-2 space-y-3 rounded-[1.75rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4">
+            <div className="md:col-span-2 space-y-3 overflow-hidden rounded-[1.75rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">Location picker</p>
                   <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Geocode the address, then click the map to fine-tune the pin.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="relative z-10 flex gap-2">
                   {selectedLocation ? (
                     <Button type="button" variant="outline" onClick={clearLocation}>
                       Clear
@@ -441,7 +440,7 @@ export function ListingWizard() {
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-3 border-t border-[color:var(--border)] pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="sticky bottom-4 z-20 flex flex-col gap-3 rounded-[1.5rem] border border-[color:var(--border)] bg-[color:var(--surface)]/95 px-4 py-4 shadow-lg shadow-slate-900/5 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div className="flex gap-3">
             <Button type="button" variant="outline" onClick={previousStep} disabled={stepIndex === 0 || isPending}>
               Back

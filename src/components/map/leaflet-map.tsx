@@ -33,13 +33,9 @@ if (typeof window !== "undefined") {
 	try {
 		const els = document.querySelectorAll('.leaflet-container');
 		els.forEach((el) => {
-			if ((el as any)._leaflet_id) {
-				try {
-					// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-					delete (el as any)._leaflet_id;
-				} catch {
-					/* ignore */
-				}
+			const container = el as HTMLElement & { _leaflet_id?: number };
+			if (container._leaflet_id) {
+				container._leaflet_id = undefined;
 			}
 		});
 	} catch {
@@ -76,7 +72,7 @@ function MapViewport({ points, searchPoint }: { points: LeafletMapPoint[]; searc
 
 export default function LeafletMap({ points, searchPoint }: { points: LeafletMapPoint[]; searchPoint: LeafletSearchPoint | null }) {
 	return (
-		<StableMapContainer center={indiaCenter} zoom={5} scrollWheelZoom className="leaflet-container h-[420px] w-full rounded-[2rem] sm:h-[520px] lg:h-[700px]">
+		<StableMapContainer center={indiaCenter} zoom={5} scrollWheelZoom className="leaflet-container h-[clamp(18rem,56dvh,32rem)] w-full rounded-[2rem] sm:h-[clamp(20rem,46dvh,36rem)] lg:h-[28rem] xl:h-[30rem]">
 			<TileLayer
 				attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 				url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
