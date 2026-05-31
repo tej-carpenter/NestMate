@@ -230,9 +230,9 @@ export function ListingWizard() {
 
     startTransition(async () => {
       const result = await publishListingAction(values);
-      if (!result.published) {
-        setStatus("Publish failed.");
-        toast.error("Publish failed.");
+      if (!result.submittedForReview) {
+        setStatus("Submission failed.");
+        toast.error("Submission failed.");
         return;
       }
 
@@ -241,8 +241,8 @@ export function ListingWizard() {
         window.localStorage.removeItem(draftStorageKey);
       }
 
-      setStatus(`Published ${listing.title} and added it to the shared listing inventory.`);
-      toast.success(`Published ${listing.title}.`);
+      setStatus(`Submitted ${listing.title} for review. It will go live after approval.`);
+      toast.success(`Submitted ${listing.title} for review.`);
     });
   }
 
@@ -298,7 +298,7 @@ export function ListingWizard() {
           <div className="grid gap-4 md:grid-cols-[repeat(auto-fit,minmax(240px,1fr))]">
             <label className="space-y-2">
               <span className="text-sm font-medium text-[color:var(--foreground)]">City</span>
-              <Input {...register("city")} placeholder="Bengaluru" />
+              <Input {...register("city")} placeholder="Indore" />
             </label>
             <label className="space-y-2">
               <span className="text-sm font-medium text-[color:var(--foreground)]">Locality</span>

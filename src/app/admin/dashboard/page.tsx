@@ -5,7 +5,10 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
+import { RouteAccessGate } from "@/components/auth/route-access-gate";
 import {
+  approveListingById,
+  archiveListingById,
   deleteListingById,
   getBookings,
   getListingInventory,
@@ -14,10 +17,13 @@ import {
   getTrafficEvents,
   getTransactions,
   getUsers,
-  updateListingById,
+  rejectListingById,
+  renewExpiredListingById,
+  suspendListingById,
   updatePayoutStatus,
 } from "@/lib/local-data";
 import { formatDateTime, formatRupee } from "@/lib/format";
+import { getListingStatusLabel, isPublicListingStatus } from "@/lib/listings/status";
 
 export default function AdminDashboardPage() {
   const [mounted, setMounted] = useState(false);
@@ -66,8 +72,12 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const activeListings = listings.filter((listing) => listing.status === "published" && !listing.blacklisted);
-  const blacklistedListings = listings.filter((listing) => listing.blacklisted);
+  const approvedListings = listings.filter((listing) => isPublicListingStatus(listing.status, listing.moderationState));
+  const pendingListings = listings.filter((listing) => listing.status === "pending_review");
+  const rejectedListings = listings.filter((listing) => listing.status === "rejected");
+  const expiredListings = listings.filter((listing) => listing.status === "expired");
+  const archivedListings = listings.filter((listing) => listing.status === "archived");
+  const suspendedListings = listings.filter((listing) => listing.moderationState === "suspended");
   const bookedListingIds = new Set(bookings.filter((booking) => booking.status === "confirmed").map((booking) => booking.listingId));
   const totalVisitors = new Set(traffic.map((event) => event.visitorId)).size;
   const pendingPayouts = payouts.filter((payout) => payout.status === "pending");
@@ -88,8 +98,35 @@ export default function AdminDashboardPage() {
     setRefreshToken((value) => value + 1);
   }
 
-  function toggleBlacklist(listingId: string, current: boolean) {
-    updateListingById(listingId, { blacklisted: !current, status: !current ? "suspended" : "published" });
+  function approveListing(listingId: string) {
+    approveListingById(listingId);
+    refresh();
+  }
+
+  function rejectListing(listingId: string) {
+    const reason = window.prompt("Enter the rejection reason")?.trim();
+    if (!reason) {
+      return;
+    }
+
+    rejectListingById(listingId, reason);
+    refresh();
+  }
+
+  function suspendListing(listingId: string) {
+    const reason = window.prompt("Enter the suspension reason")?.trim();
+    suspendListingById(listingId, reason);
+    refresh();
+  }
+
+  function archiveListing(listingId: string) {
+    const reason = window.prompt("Enter the archive reason")?.trim();
+    archiveListingById(listingId, reason);
+    refresh();
+  }
+
+  function renewExpiredListing(listingId: string) {
+    renewExpiredListingById(listingId);
     refresh();
   }
 
@@ -108,7 +145,7 @@ export default function AdminDashboardPage() {
   }
 
   function formatAvailability(listing: (typeof listings)[number]) {
-    if (listing.blacklisted) {
+    if (!isPublicListingStatus(listing.status, listing.moderationState)) {
       return "Unavailable";
     }
 
@@ -120,8 +157,15 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="space-y-6">
+    <RouteAccessGate
+      variant="moderator"
+      title="Admin access required"
+      description="The admin dashboard is limited to moderators who can review listings and platform activity."
+      actionLabel="Go to login"
+      actionHref="/auth/login"
+    >
+      <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="space-y-6">
         <Card className="p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-300">Admin dashboard</p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl text-slate-950 dark:text-slate-50">Monitoring, moderation, and inventory health</h1>
@@ -144,8 +188,12 @@ export default function AdminDashboardPage() {
             ["Pending payouts", String(pendingPayouts.length)],
             ["Total listings", String(listings.length)],
             ["Booked listings", String(bookedListingIds.size)],
-            ["Active listings", String(activeListings.length)],
-            ["Blacklisted", String(blacklistedListings.length)],
+            ["Approved listings", String(approvedListings.length)],
+            ["Pending review", String(pendingListings.length)],
+            ["Rejected", String(rejectedListings.length)],
+            ["Expired", String(expiredListings.length)],
+            ["Archived", String(archivedListings.length)],
+            ["Suspended", String(suspendedListings.length)],
           ].map(([label, value]) => (
             <Card key={label} className="min-h-32 p-5">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</p>
@@ -232,7 +280,7 @@ export default function AdminDashboardPage() {
                   <h2 className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-50">{property.title}</h2>
                   <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{property.locality}</p>
                 </div>
-                <Chip className="!rounded-full px-3 py-1 text-xs font-semibold">{property.blacklisted ? "blacklisted" : property.status}</Chip>
+                <Chip className="!rounded-full px-3 py-1 text-xs font-semibold">{getListingStatusLabel(property.status, property.moderationState)}</Chip>
               </div>
               <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{property.description}</p>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -245,9 +293,31 @@ export default function AdminDashboardPage() {
                 <Button asChild variant="outline" className="sm:flex-1">
                   <Link href={`/host/listings/new?edit=${property.slug}`}>Edit</Link>
                 </Button>
-                <Button variant="outline" className="sm:flex-1" onClick={() => toggleBlacklist(property.id, property.blacklisted)}>
-                  {property.blacklisted ? "Unblacklist" : "Blacklist"}
-                </Button>
+                {property.status === "pending_review" ? (
+                  <Button variant="outline" className="sm:flex-1" onClick={() => approveListing(property.id)}>
+                    Approve
+                  </Button>
+                ) : null}
+                {property.status === "pending_review" || property.status === "approved" ? (
+                  <Button variant="outline" className="sm:flex-1" onClick={() => rejectListing(property.id)}>
+                    Reject
+                  </Button>
+                ) : null}
+                {property.status === "approved" ? (
+                  <Button variant="outline" className="sm:flex-1" onClick={() => suspendListing(property.id)}>
+                    Suspend
+                  </Button>
+                ) : null}
+                {property.status !== "archived" ? (
+                  <Button variant="outline" className="sm:flex-1" onClick={() => archiveListing(property.id)}>
+                    Archive
+                  </Button>
+                ) : null}
+                {property.status === "expired" ? (
+                  <Button variant="outline" className="sm:flex-1" onClick={() => renewExpiredListing(property.id)}>
+                    Renew
+                  </Button>
+                ) : null}
                 <Button variant="ghost" className="sm:flex-1" onClick={() => removeListing(property.id)}>
                   Delete
                 </Button>
@@ -255,7 +325,8 @@ export default function AdminDashboardPage() {
             </Card>
           ))}
         </div>
-      </div>
-    </main>
+        </div>
+      </main>
+    </RouteAccessGate>
   );
 }

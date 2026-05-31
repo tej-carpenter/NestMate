@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { getListingInventory, type ListingInventoryItem } from "@/lib/local-data";
+import { getPublicListingInventory, type ListingInventoryItem } from "@/lib/local-data";
 import { ListingCard } from "@/components/listings/listing-card";
 
 const quickChips = ["Verified only", "Under 15k", "Near metro", "Food included", "Female-friendly", "Move-in ready"];
@@ -15,7 +15,7 @@ export function SearchResultsShell({ querySummary }: { querySummary: string }) {
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
-      setListings(getListingInventory());
+      setListings(getPublicListingInventory());
       setMounted(true);
     }, 0);
 
@@ -124,7 +124,7 @@ export function SearchResultsShell({ querySummary }: { querySummary: string }) {
             <div className="mt-4 grid gap-3 text-sm text-teal-800 dark:text-teal-300">
               <Link className="rounded-[1.25rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 transition hover:border-teal-500/40 hover:text-teal-900 dark:hover:text-teal-100" href="/map">Map discovery</Link>
               <Link className="rounded-[1.25rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 transition hover:border-teal-500/40 hover:text-teal-900 dark:hover:text-teal-100" href="/profile">Profile</Link>
-              <Link className="rounded-[1.25rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 transition hover:border-teal-500/40 hover:text-teal-900 dark:hover:text-teal-100" href="/city/bengaluru">Bengaluru city page</Link>
+              <Link className="rounded-[1.25rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 transition hover:border-teal-500/40 hover:text-teal-900 dark:hover:text-teal-100" href="/city/Indore">Indore city page</Link>
               <Link className="rounded-[1.25rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 transition hover:border-teal-500/40 hover:text-teal-900 dark:hover:text-teal-100" href="/host/listings/new">Create a listing</Link>
             </div>
           </details>

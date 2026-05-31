@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BadgeCheck, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { getListingInventory, getReviews } from "@/lib/local-data";
+import { getPublicListingInventory, getReviews } from "@/lib/local-data";
 
 export function NestScoreExplanation() {
   const [reviewCount, setReviewCount] = useState(0);
@@ -14,7 +14,7 @@ export function NestScoreExplanation() {
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
-      const listings = getListingInventory();
+      const listings = getPublicListingInventory();
       const reviews = getReviews();
       const reviewedIds = new Set(reviews.map((review) => review.listingId));
 
@@ -86,7 +86,7 @@ export function NestScoreExplanation() {
           </div>
           <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
             {listingCount === 0
-              ? "No listings are published yet. NestScore states will appear as listings and reviews are created."
+              ? "No listings are approved yet. NestScore states will appear as listings and reviews are created."
               : awaitingFeedbackListings > 0
                 ? `${awaitingFeedbackListings} listings are awaiting first resident feedback.`
                 : "All current listings with reviews already show live feedback data."}

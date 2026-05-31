@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/format";
 import { getBookings, getLoginEvents, getPayments, getUsers } from "@/lib/local-data";
-import { clearLocalSession, getPostLoginRoute, readLocalSession } from "@/lib/session";
+import { clearLocalSession, getAccountLabel, getPostLoginRoute, readLocalSession } from "@/lib/session";
+import { isAuthenticatedSession } from "@/lib/auth/permissions";
 
 export function ProfilePanel() {
   const [mounted, setMounted] = React.useState(false);
@@ -62,14 +63,12 @@ export function ProfilePanel() {
     );
   }
 
-  if (!session || (session.role !== "user" && session.role !== "admin")) {
+  if (!isAuthenticatedSession(session)) {
     return (
       <Card className="mx-auto w-full max-w-2xl p-6 sm:p-8">
         <Badge className="bg-teal-50 text-teal-950 dark:bg-teal-500/15 dark:text-teal-100">Profile</Badge>
         <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl text-slate-950 dark:text-slate-50">Sign in to view your profile</h1>
-        <p className="mt-4 text-base leading-7 text-slate-600 dark:text-slate-300">
-          The profile area is reserved for logged-in users and admins. Anonymous visitors can browse listings without signing in.
-        </p>
+        <p className="mt-4 text-base leading-7 text-slate-600 dark:text-slate-300">The profile area is reserved for authenticated accounts. Anonymous visitors can browse listings without signing in.</p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <Button asChild>
             <Link href="/auth/login">Go to login</Link>
@@ -94,13 +93,11 @@ export function ProfilePanel() {
           <div className="space-y-3">
             <Badge className="bg-teal-50 text-teal-950 dark:bg-teal-500/15 dark:text-teal-100">Profile home</Badge>
             <h1 className="font-[family-name:var(--font-display)] text-4xl text-slate-950 dark:text-slate-50">{session.name || "Nestmate user"}</h1>
-            <p className="max-w-xl text-base leading-7 text-slate-600 dark:text-slate-300">
-              Account details, role access, and quick navigation live here for user and admin accounts.
-            </p>
+            <p className="max-w-xl text-base leading-7 text-slate-600 dark:text-slate-300">Account details, role access, and quick navigation live here for authenticated accounts.</p>
           </div>
           <Chip className="inline-flex items-center gap-2 px-4 py-2">
             <BadgeCheck className="h-4 w-4 text-emerald-600" />
-            {session.role.toUpperCase()} account
+            {getAccountLabel(session.role)} account
           </Chip>
         </div>
 
@@ -122,9 +119,16 @@ export function ProfilePanel() {
           <div className="min-h-32 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
             <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
               <BadgeCheck className="h-4 w-4 text-teal-700 dark:text-teal-300" />
+              Email
+            </div>
+            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{session.email ?? "Not added"}</p>
+          </div>
+          <div className="min-h-32 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
+            <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <BadgeCheck className="h-4 w-4 text-teal-700 dark:text-teal-300" />
               Role
             </div>
-            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{session.role}</p>
+            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{getAccountLabel(session.role)}</p>
           </div>
           <div className="min-h-32 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
             <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">

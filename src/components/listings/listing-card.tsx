@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import React from "react";
 import { ArrowRight, BadgeCheck, Heart, MapPin, ShieldCheck, Sparkles, Star, SquareParking, UtensilsCrossed, Users, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,9 @@ import { formatRupee } from "@/lib/format";
 import { buildListingThumbnail } from "@/lib/listing-thumbnail";
 import { formatPricePeriod } from "@/lib/pricing";
 import type { ListingInventoryItem } from "@/lib/local-data";
+import { canSaveListing } from "@/lib/auth/permissions";
+import { readLocalSession } from "@/lib/session";
+import { isPublicListingStatus } from "@/lib/listings/status";
 
 type ListingCardProps = {
   listing: ListingInventoryItem;
@@ -69,8 +74,8 @@ function getAmenityMeta(amenity: string): AmenityMeta {
 }
 
 function formatAvailability(listing: ListingInventoryItem) {
-  if (listing.blacklisted) {
-    return { label: "Unavailable", tone: "danger" as const, width: 0 };
+  if (!isPublicListingStatus(listing.status, listing.moderationState)) {
+    return { label: listing.status === "rejected" ? "Rejected" : listing.status === "expired" ? "Expired" : "Unavailable", tone: "danger" as const, width: 0 };
   }
 
   if (listing.totalUnits <= 0 || listing.availableUnits <= 0) {
@@ -80,10 +85,6 @@ function formatAvailability(listing: ListingInventoryItem) {
   const occupied = Math.max(0, listing.totalUnits - listing.availableUnits);
   const width = listing.totalUnits > 0 ? Math.round((occupied / listing.totalUnits) * 100) : 0;
 
-  if (listing.availableUnits <= 0) {
-    return { label: "Fully occupied", tone: "danger" as const, width: 100 };
-  }
-
   return {
     label: `${listing.availableUnits} of ${listing.totalUnits} available`,
     tone: listing.availableUnits <= Math.max(1, Math.ceil(listing.totalUnits * 0.25)) ? ("warn" as const) : ("success" as const),
@@ -92,7 +93,9 @@ function formatAvailability(listing: ListingInventoryItem) {
 }
 
 function ListingCard({ listing, compact = false, className }: ListingCardProps) {
+  const router = useRouter();
   const [saved, setSaved] = useState(false);
+  const [session, setSession] = useState<ReturnType<typeof readLocalSession>>(null);
   const thumbnail = listing.thumbnail ?? buildListingThumbnail(listing);
   const availability = useMemo(() => formatAvailability(listing), [listing]);
   const amenityCount = compact ? 3 : 4;
@@ -100,6 +103,16 @@ function ListingCard({ listing, compact = false, className }: ListingCardProps) 
   const reviewCount = typeof listing.reviewCount === "number" ? listing.reviewCount : 0;
   const genderPreference = listing.genderPreference ?? "any";
   const hasResidentFeedback = reviewCount > 0;
+  const canSave = canSaveListing(session);
+
+  useEffect(() => {
+    const refreshSession = () => setSession(readLocalSession());
+
+    refreshSession();
+    window.addEventListener("storage", refreshSession);
+
+    return () => window.removeEventListener("storage", refreshSession);
+  }, []);
 
   return (
     <Card className={cn("group overflow-hidden border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm shadow-slate-900/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_-24px_rgba(15,23,42,0.28)] dark:hover:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.42)]", className)}>
@@ -128,15 +141,24 @@ function ListingCard({ listing, compact = false, className }: ListingCardProps) 
 
           <button
             type="button"
-            aria-label={saved ? "Remove from favorites" : "Save to favorites"}
-            aria-pressed={saved}
-            onClick={() => setSaved((current) => !current)}
+            aria-label={canSave ? (saved ? "Remove from favorites" : "Save to favorites") : "Sign in to save listings"}
+            aria-pressed={canSave ? saved : false}
+            onClick={() => {
+              if (!canSave) {
+                router.push("/auth/login");
+                return;
+              }
+
+              setSaved((current) => !current);
+            }}
+            disabled={!canSave}
             className={cn(
               "absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] backdrop-blur transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--ring)]",
-              saved && "bg-rose-500/95 text-white",
+              canSave && saved && "bg-rose-500/95 text-white",
+              !canSave && "cursor-not-allowed opacity-70 hover:scale-100",
             )}
           >
-            <Heart className={cn("h-4.5 w-4.5 transition-transform duration-200", saved && "fill-current")} />
+            <Heart className={cn("h-4.5 w-4.5 transition-transform duration-200", canSave && saved && "fill-current")} />
           </button>
 
           <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">

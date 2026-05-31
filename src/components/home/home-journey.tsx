@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ListingCard } from "@/components/listings/listing-card";
-import { getBookings, getListingInventory, type ListingInventoryItem } from "@/lib/local-data";
+import { getBookings, getPublicListingInventory, type ListingInventoryItem } from "@/lib/local-data";
 import { geocodeListing } from "@/lib/nominatim";
 
 const LeafletMap = dynamic(() => import("@/components/map/leaflet-map"), {
@@ -58,7 +58,7 @@ export function HomeJourney() {
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
-      const inventory = getListingInventory();
+      const inventory = getPublicListingInventory();
       setListings(inventory);
       setBookingCount(getBookings().length);
     }, 0);
@@ -134,11 +134,8 @@ export function HomeJourney() {
 
   const verifiedCount = useMemo(() => listings.filter((listing) => listing.verified).length, [listings]);
   const cityCount = useMemo(() => new Set(listings.map((listing) => listing.city)).size, [listings]);
-  const publishedCount = useMemo(() => listings.filter((listing) => listing.status === "published").length, [listings]);
-  const featuredListings = useMemo(
-    () => listings.filter((listing) => listing.status === "published" && !listing.blacklisted).slice(0, 4),
-    [listings],
-  );
+  const approvedCount = useMemo(() => listings.length, [listings]);
+  const featuredListings = useMemo(() => listings.slice(0, 4), [listings]);
 
   return (
     <div className="space-y-6 pb-20">
@@ -206,7 +203,7 @@ export function HomeJourney() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-800 dark:text-teal-300">Discovery</p>
-            <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50 sm:text-4xl">Larger map experience</h2>
+            <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50 sm:text-4xl">Map experience</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Scan where listings are concentrated, then drill into details.</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -227,13 +224,13 @@ export function HomeJourney() {
 
       <section className="rounded-[2rem] border border-[color:var(--border)] bg-[color:var(--surface)] p-5 sm:p-6">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-800 dark:text-teal-300">Marketplace proof</p>
-        <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50 sm:text-4xl">Proof from real records, not placeholders</h2>
+        <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50 sm:text-4xl">Statistics</h2>
 
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           <Card className="border-[color:var(--border)] bg-[color:var(--surface-strong)] p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Published listings</p>
-            <p className="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-50">{publishedCount}</p>
-            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Count reflects stored listings with published status.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Approved listings</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-50">{approvedCount}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Count reflects listings approved for public discovery.</p>
           </Card>
           <Card className="border-[color:var(--border)] bg-[color:var(--surface-strong)] p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Verified inventory</p>
@@ -252,7 +249,7 @@ export function HomeJourney() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-800 dark:text-teal-300">Listings</p>
-            <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50 sm:text-4xl">Featured listings to compare quickly</h2>
+            <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50 sm:text-4xl">Featured listings</h2>
           </div>
           <Button asChild variant="outline" className="h-11 px-5">
             <Link href="/search">View all listings</Link>
@@ -264,7 +261,7 @@ export function HomeJourney() {
             featuredListings.map((listing) => <ListingCard key={listing.id} listing={listing} className="min-h-[40rem]" />)
           ) : (
             <Card className="border-[color:var(--border)] p-6 text-sm leading-6 text-slate-600 dark:text-slate-300 lg:col-span-2">
-              No published listings yet. Add your first property to bring this marketplace section to life.
+              No approved listings yet. Add your first property to bring this marketplace section to life.
             </Card>
           )}
         </div>
@@ -291,7 +288,7 @@ export function HomeJourney() {
         <Card className="border-[color:var(--border)] bg-[color:var(--surface)] p-6 sm:p-7">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-800 dark:text-teal-300">For hosts</p>
           <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50">List your property and get discovered</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">Create a listing with location, amenities, and pricing. Published inventory appears across search and map discovery.</p>
+          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">Create a listing with location, amenities, and pricing. Approved inventory appears across search and map discovery.</p>
           <div className="mt-5 grid gap-3">
             <Button asChild size="lg" className="h-12 justify-center">
               <Link href="/host/listings/new">Start listing now</Link>

@@ -108,7 +108,7 @@ export function SearchFilters() {
         </label>
         <label className="min-w-0 space-y-2">
           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">City</span>
-          <Input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Bengaluru" />
+          <Input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Indore" />
         </label>
         <label className="min-w-0 space-y-2">
           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Budget cap</span>

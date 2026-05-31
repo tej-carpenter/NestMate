@@ -1,4 +1,4 @@
-export type UserRole = "guest" | "host" | "admin";
+export type UserRole = "user" | "owner" | "admin";
 
 export interface UserRecord {
   id: string;
@@ -13,6 +13,7 @@ export interface UserRecord {
 export interface ListingRecord {
   id: string;
   host_id: string;
+  slug: string;
   title: string;
   description: string;
   city: string;
@@ -25,7 +26,14 @@ export interface ListingRecord {
   amenities: string[];
   gender_preference: "male" | "female" | "any";
   images: string[];
-  status: "draft" | "published" | "suspended";
+  status: "draft" | "pending_review" | "approved" | "rejected" | "expired" | "archived";
+  moderation_state: "active" | "suspended";
+  rejection_reason: string | null;
+  suspension_reason: string | null;
+  approved_at: string | null;
+  reviewed_at: string | null;
+  expires_at: string | null;
+  archived_at: string | null;
   created_at: string;
 }
 
@@ -89,4 +97,38 @@ export interface MessageRecord {
   message_body: string;
   is_read: boolean;
   sent_at: string;
+}
+
+export type VerificationSubjectType = "user" | "listing";
+
+export type VerificationLevel = "contact" | "owner" | "property" | "photos";
+
+export type VerificationStatus = "draft" | "pending_review" | "needs_action" | "approved" | "rejected" | "revoked";
+
+export interface VerificationRequestRecord {
+  id: string;
+  subject_type: VerificationSubjectType;
+  subject_id: string;
+  subject_label: string | null;
+  level: VerificationLevel;
+  status: VerificationStatus;
+  approval_mode: "system" | "admin";
+  checklist: Array<{
+    key: string;
+    label: string;
+    completed: boolean;
+    completed_at: string | null;
+  }>;
+  evidence_summary: string[];
+  requester_user_id: string | null;
+  requester_phone: string | null;
+  reviewer_user_id: string | null;
+  reviewer_phone: string | null;
+  review_note: string | null;
+  requested_at: string;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  approved_at: string | null;
+  rejected_at: string | null;
+  updated_at: string;
 }

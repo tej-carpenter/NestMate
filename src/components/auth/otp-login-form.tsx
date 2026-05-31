@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { upsertUserOnLogin } from "@/lib/local-data";
-import { getPostLoginRoute, readLocalSession, writeLocalSession } from "@/lib/session";
+import { getAccountLabel, getPostLoginRoute, readLocalSession, writeLocalSession } from "@/lib/session";
 
 const phoneSchema = z.string().min(8).max(16);
 const emailSchema = z.string().email();
@@ -18,7 +18,12 @@ const loginRoles = [
   {
     value: "user" as const,
     title: "User",
-    description: "Book stays, create listings, and manage your profile.",
+    description: "Book stays, save listings, and manage your profile.",
+  },
+  {
+    value: "owner" as const,
+    title: "Owner",
+    description: "Create listings, manage availability, and review incoming requests.",
   },
   {
     value: "admin" as const,
@@ -52,7 +57,7 @@ export function OtpLoginForm() {
       setName(initialSession.name);
       setRole(initialSession.role);
       setStep("verify");
-      setStatus(`Loaded your ${initialSession.role} session. You can continue or sign out first.`);
+      setStatus(`Loaded your ${getAccountLabel(initialSession.role)} session. You can continue or sign out first.`);
     }, 0);
 
     return () => window.clearTimeout(handle);
@@ -73,6 +78,8 @@ export function OtpLoginForm() {
       phone: identifier,
       name: normalizedName,
       role,
+      email: loginMethod === "email" ? identifier : null,
+      authMethod: loginMethod,
     });
 
     if (!currentUser) {
@@ -83,6 +90,8 @@ export function OtpLoginForm() {
       userId: currentUser.id,
       phone: identifier,
       name: normalizedName,
+      email: loginMethod === "email" ? identifier : null,
+      authMethod: loginMethod,
       role,
       signedInAt: Date.now(),
     });
@@ -114,7 +123,7 @@ export function OtpLoginForm() {
       }
 
       setStep("verify");
-      setStatus(`OTP sent for ${role}. Enter the ${loginMethod === "email" ? "email" : "SMS"} code to continue.`);
+      setStatus(`OTP sent for ${getAccountLabel(role)}. Enter the ${loginMethod === "email" ? "email" : "SMS"} code to continue.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Unable to request OTP");
     } finally {

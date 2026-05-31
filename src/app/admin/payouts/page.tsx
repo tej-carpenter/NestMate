@@ -6,6 +6,7 @@ import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { RouteAccessGate } from "@/components/auth/route-access-gate";
 import {
   getBookings,
   getListingInventory,
@@ -177,8 +178,15 @@ export default function AdminPayoutsPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="space-y-6">
+    <RouteAccessGate
+      variant="moderator"
+      title="Admin access required"
+      description="Payout operations are available only to admin accounts."
+      actionLabel="Go to login"
+      actionHref="/auth/login"
+    >
+      <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="space-y-6">
         <Card className="p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-300">Admin payouts</p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl text-slate-950 dark:text-slate-50">Payout operations dashboard</h1>
@@ -349,7 +357,8 @@ export default function AdminPayoutsPage() {
             </div>
           </Card>
         </div>
-      </div>
-    </main>
+        </div>
+      </main>
+    </RouteAccessGate>
   );
 }

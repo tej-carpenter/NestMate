@@ -5,6 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { HostContactChannel, PublicHostProfile } from "@/lib/local-data";
+import { canContactOwner } from "@/lib/auth/permissions";
+import { readLocalSession } from "@/lib/session";
+import { useEffect, useState } from "react";
 
 function formatJoinedDate(value: number) {
   return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(value));
@@ -45,6 +48,20 @@ export function HostProfileCard({
   compact?: boolean;
   showPortfolio?: boolean;
 }) {
+  const [mounted, setMounted] = useState(false);
+  const [session, setSession] = useState<ReturnType<typeof readLocalSession>>(null);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setSession(readLocalSession());
+      setMounted(true);
+    }, 0);
+
+    return () => window.clearTimeout(handle);
+  }, []);
+
+  const canContact = canContactOwner(session);
+
   return (
     <Card className="rounded-[1.75rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-5 sm:p-6">
       <div className="flex items-start gap-4">
@@ -77,15 +94,26 @@ export function HostProfileCard({
       </div>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
-        {host.contactOptions.map((channel) => (
-          <Button key={channel} asChild variant="outline" className="h-11 justify-center text-sm">
-            <Link href={channelHref(channel, host.id, currentListingSlug)}>
-              {channel === "in_app_chat" ? <MessageSquareText className="h-4 w-4" /> : null}
-              {channel === "call_request" ? <PhoneCall className="h-4 w-4" /> : null}
-              {channelLabel(channel)}
+        {!mounted ? (
+          <div className="h-11 rounded-[1rem] bg-[color:var(--surface)] sm:col-span-3" />
+        ) : canContact ? (
+          host.contactOptions.map((channel) => (
+            <Button key={channel} asChild variant="outline" className="h-11 justify-center text-sm">
+              <Link href={channelHref(channel, host.id, currentListingSlug)}>
+                {channel === "in_app_chat" ? <MessageSquareText className="h-4 w-4" /> : null}
+                {channel === "call_request" ? <PhoneCall className="h-4 w-4" /> : null}
+                {channelLabel(channel)}
+              </Link>
+            </Button>
+          ))
+        ) : (
+          <Button asChild variant="outline" className="h-11 justify-center text-sm sm:col-span-3">
+            <Link href="/auth/login">
+              <MessageSquareText className="h-4 w-4" />
+              Sign in to contact owner
             </Link>
           </Button>
-        ))}
+        )}
       </div>
 
       {showPortfolio ? (
@@ -105,7 +133,7 @@ export function HostProfileCard({
                 </Link>
               ))
             ) : (
-              <p className="text-sm text-slate-600 dark:text-slate-300">No active listings published yet.</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300">No approved listings yet.</p>
             )}
           </div>
         </div>

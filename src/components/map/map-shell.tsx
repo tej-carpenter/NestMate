@@ -6,7 +6,7 @@ import { Search, Navigation, Layers3 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getListingInventory, type ListingInventoryItem } from "@/lib/local-data";
+import { getPublicListingInventory, type ListingInventoryItem } from "@/lib/local-data";
 import { ListingCard } from "@/components/listings/listing-card";
 import { geocodeListing, geocodeQuery } from "@/lib/nominatim";
 
@@ -106,7 +106,7 @@ export function MapShell() {
   // Hydrate from client storage after mount to avoid SSR/client markup mismatch.
   useEffect(() => {
     const handle = window.setTimeout(() => {
-      setListings(getListingInventory());
+      setListings(getPublicListingInventory());
     }, 0);
 
     return () => window.clearTimeout(handle);
@@ -147,7 +147,7 @@ export function MapShell() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-800 dark:text-teal-300">Map discovery</p>
-            <h1 className="mt-2 text-balance font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50 sm:text-4xl">Leaflet + OpenStreetMap + Nominatim</h1>
+            <h1 className="mt-2 text-balance font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50 sm:text-4xl">Search</h1>
             <p className="mt-4 text-base leading-7 text-slate-600 dark:text-slate-300">
               Listings are geocoded through Nominatim and plotted on OpenStreetMap tiles using React Leaflet.
             </p>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { getListingInventory, getBookings } from "@/lib/local-data";
+import { getBookings, getPublicListingInventory } from "@/lib/local-data";
 
 export default function Stats() {
   const [verifiedCount, setVerifiedCount] = useState(0);
@@ -11,7 +11,7 @@ export default function Stats() {
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
-      const listings = getListingInventory();
+      const listings = getPublicListingInventory();
       setVerifiedCount(listings.filter((l) => l.verified).length);
       setCityCount(new Set(listings.map((l) => l.city)).size);
       const bookings = getBookings();

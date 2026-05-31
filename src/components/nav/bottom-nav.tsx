@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Home, Search, MapPinned, PlusCircle, UserRound, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { readLocalSession } from "@/lib/session";
+import { getAccountLabel, getPostLoginRoute, readLocalSession } from "@/lib/session";
+import { isAdminRole } from "@/lib/auth/roles";
 
 const baseItems = [
   { href: "/", label: "Home", icon: Home },
@@ -33,9 +34,9 @@ export function BottomNav() {
     return [
       ...baseItems,
       {
-        href: session.role === "admin" ? "/admin/dashboard" : "/profile",
-        label: session.role === "admin" ? "Admin" : "Profile",
-        icon: session.role === "admin" ? ShieldCheck : UserRound,
+        href: getPostLoginRoute(session.role),
+        label: getAccountLabel(session.role),
+        icon: isAdminRole(session.role) ? ShieldCheck : UserRound,
       },
     ] as const;
   }, [session]);

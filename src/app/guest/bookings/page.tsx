@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { formatRupee } from "@/lib/format";
 import { getBookings, getPaymentForBooking } from "@/lib/local-data";
 import { readLocalSession } from "@/lib/session";
+import { isAuthenticatedSession } from "@/lib/auth/permissions";
 
 export default function GuestBookingsPage() {
   const [mounted, setMounted] = useState(false);
@@ -37,7 +38,7 @@ export default function GuestBookingsPage() {
       </main>
     );
   }
-  if (!session || (session.role !== "user" && session.role !== "admin")) {
+  if (!isAuthenticatedSession(session)) {
     return (
       <main className="mx-auto w-full max-w-7xl px-4 py-6 pb-20 sm:px-6 sm:py-10 lg:px-8">
         <Card className="p-6">

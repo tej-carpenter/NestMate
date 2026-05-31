@@ -11,6 +11,7 @@ import { formatRupee } from "@/lib/format";
 import { createBooking, createPaymentForBooking, getListingBySlug } from "@/lib/local-data";
 import { formatPricePeriod } from "@/lib/pricing";
 import { readLocalSession } from "@/lib/session";
+import { isAuthenticatedSession } from "@/lib/auth/permissions";
 
 export default function BookingPage({ params }: { params: Promise<{ slug: string }> | { slug: string } }) {
   const router = useRouter();
@@ -65,7 +66,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
   }
 
   const selectedListing = listing;
-  const isAuthenticated = Boolean(session && (session.role === "user" || session.role === "admin"));
+  const isAuthenticated = isAuthenticatedSession(session);
   const hasResidentFeedback = (selectedListing.reviewCount ?? 0) > 0;
   const hasAvailabilityData = selectedListing.totalUnits > 0 && selectedListing.availableUnits > 0;
 

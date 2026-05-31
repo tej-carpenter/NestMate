@@ -13,7 +13,9 @@ export interface MockProperty {
   nestscore: number;
   verified: boolean;
   reviewCount: number;
-  status: "draft" | "published" | "suspended";
+  status: "draft" | "pending_review" | "approved" | "rejected" | "expired" | "archived";
+  moderationState?: "active" | "suspended";
+  rejectionReason?: string | null;
   description: string;
   amenities: string[];
   mapPosition: { left: string; top: string };

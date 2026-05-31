@@ -5,7 +5,8 @@ import Link from "next/link";
 import { UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { clearLocalSession, readLocalSession } from "@/lib/session";
+import { clearLocalSession, getAccountLabel, getPostLoginRoute, readLocalSession } from "@/lib/session";
+import { isAdminRole } from "@/lib/auth/roles";
 
 export function AccountActions() {
   const [session, setSession] = React.useState<ReturnType<typeof readLocalSession>>(null);
@@ -22,7 +23,7 @@ export function AccountActions() {
     };
   }, []);
 
-  const profileHref = session?.role === "admin" ? "/admin/dashboard" : "/profile";
+  const profileHref = session ? getPostLoginRoute(session.role) : "/auth/login";
 
   return (
     <div suppressHydrationWarning className="flex flex-wrap items-center justify-end gap-2">
@@ -35,7 +36,7 @@ export function AccountActions() {
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-teal-600 text-white shadow-sm shadow-teal-900/20">
                 <UserRound className="h-4 w-4" />
               </span>
-              <span className="hidden sm:inline">{session.role === "admin" ? "Admin" : "Profile"}</span>
+              <span className="hidden sm:inline">{getAccountLabel(session.role)}</span>
             </Link>
           </Button>
           <Button
@@ -57,10 +58,10 @@ export function AccountActions() {
         </Button>
       )}
 
-      <Button asChild size="sm" className="px-3 sm:px-4">
+      <Button asChild size="sm" className="px-3 sm:px-4" disabled={!!session && !session.phone}>
         <Link href="/host/listings/new">
           <span className="sm:hidden">List</span>
-          <span className="hidden sm:inline">List a property</span>
+          <span className="hidden sm:inline">{isAdminRole(session?.role ?? "user") ? "Moderate listings" : "List a property"}</span>
         </Link>
       </Button>
     </div>

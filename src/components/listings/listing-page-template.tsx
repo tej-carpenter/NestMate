@@ -11,9 +11,10 @@ import ReviewSection from "@/components/listings/review-section";
 import { HostProfileCard } from "@/components/host/host-profile-card";
 import { formatPricePeriod } from "@/lib/pricing";
 import { canManageListing, type ListingActor, type ListingInventoryItem, type PublicHostProfile } from "@/lib/local-data";
+import { getListingStatusLabel, isPublicListingStatus } from "@/lib/listings/status";
 
 const cityLandmarks: Record<string, { name: string; distance: string; note: string }[]> = {
-  Bengaluru: [
+  Indore: [
     { name: "ORR tech corridor", distance: "12 min drive", note: "Ideal for daily office commutes" },
     { name: "Bellandur Lake", distance: "8 min walk", note: "Open space and evening walks" },
     { name: "EcoSpace / RMZ", distance: "15 min drive", note: "Popular employment hubs" },
@@ -42,8 +43,8 @@ const houseRules = [
   "Valid ID required at move-in.",
 ];
 
-function formatAvailability(listing: { blacklisted: boolean; availableUnits: number; totalUnits: number }) {
-  if (listing.blacklisted) {
+function formatAvailability(listing: { status: ListingInventoryItem["status"]; moderationState: ListingInventoryItem["moderationState"]; availableUnits: number; totalUnits: number }) {
+  if (!isPublicListingStatus(listing.status, listing.moderationState)) {
     return "Unavailable";
   }
 
@@ -99,11 +100,12 @@ export default function ListingPageTemplate({
   onDeleteListing?: (listingId: string) => void;
 }) {
   const heroImages = [listing, ...inventory.filter((item) => item.slug !== listing.slug)].slice(0, 4);
-  const landmarks = cityLandmarks[listing.city] ?? cityLandmarks.Bengaluru;
+  const landmarks = cityLandmarks[listing.city] ?? cityLandmarks.Indore;
   const availabilityLabel = formatAvailability(listing);
   const hasResidentFeedback = (listing.reviewCount ?? 0) > 0;
   const relatedImage = heroImages[1] ?? listing;
   const canEditListing = canManageListing(listing, currentUser);
+  const isBookable = isPublicListingStatus(listing.status, listing.moderationState);
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 pb-28 pt-4 sm:px-6 lg:px-8">
@@ -143,7 +145,7 @@ export default function ListingPageTemplate({
                   {[
                     { label: "Starting from", value: formatRupee(listing.price), detail: formatPricePeriod(listing.priceType) },
                     { label: "Availability", value: availabilityLabel, detail: listing.totalUnits > 0 ? "Live inventory from stored records" : "Host has not published inventory yet" },
-                    { label: "Booking state", value: listing.blacklisted ? "Unavailable" : "Open for requests", detail: "Booking handoff is visible in the sidebar" },
+                    { label: "Booking state", value: isBookable ? "Open for requests" : "Unavailable", detail: "Booking handoff is visible in the sidebar" },
                   ].map((item) => (
                     <div key={item.label} className="rounded-[1.5rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4 sm:p-5">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{item.label}</p>
@@ -203,7 +205,7 @@ export default function ListingPageTemplate({
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                   {[
                     { label: "Availability", value: availabilityLabel },
-                    { label: "Listed status", value: listing.status === "published" ? "Published" : listing.status },
+                    { label: "Listed status", value: getListingStatusLabel(listing.status, listing.moderationState) },
                     { label: "Trust state", value: hasResidentFeedback ? `Feedback live` : "Awaiting resident feedback" },
                   ].map((item) => (
                     <div key={item.label} className="rounded-[1.25rem] bg-[color:var(--surface)] p-4">
@@ -396,8 +398,8 @@ export default function ListingPageTemplate({
             ) : null}
 
             <div className="mt-4 grid gap-3">
-              <Button asChild className="w-full justify-center" disabled={listing.blacklisted}>
-                <Link href={`/book/${listing.slug}`}>{listing.blacklisted ? "Currently unavailable" : "Continue to booking"}</Link>
+              <Button asChild className="w-full justify-center" disabled={!isBookable}>
+                <Link href={`/book/${listing.slug}`}>{isBookable ? "Continue to booking" : "Currently unavailable"}</Link>
               </Button>
               <Button asChild variant="outline" className="w-full justify-center">
                 <Link href="#reviews">Read resident feedback</Link>
@@ -408,7 +410,7 @@ export default function ListingPageTemplate({
               <summary className="cursor-pointer list-none text-sm font-semibold text-slate-950 dark:text-slate-50">Availability details</summary>
               <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 <p>{listing.totalUnits > 0 ? `We currently store ${listing.availableUnits} of ${listing.totalUnits} units.` : "The host has not listed inventory details yet."}</p>
-                <p>{listing.blacklisted ? "This listing is currently unavailable." : "Booking is only enabled when the listing is open."}</p>
+                <p>{isBookable ? "Booking is only enabled when the listing is open." : "This listing is not currently available for booking."}</p>
               </div>
             </details>
           </Card>
@@ -421,8 +423,8 @@ export default function ListingPageTemplate({
             <p className="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Starting from</p>
             <p className="truncate text-sm font-semibold text-slate-950 dark:text-slate-50">{formatRupee(listing.price)} {formatPricePeriod(listing.priceType)}</p>
           </div>
-          <Button asChild className="h-12 flex-1 justify-center" disabled={listing.blacklisted}>
-            <Link href={`/book/${listing.slug}`}>{listing.blacklisted ? "Unavailable" : "Book now"}</Link>
+          <Button asChild className="h-12 flex-1 justify-center" disabled={!isBookable}>
+            <Link href={`/book/${listing.slug}`}>{isBookable ? "Book now" : "Unavailable"}</Link>
           </Button>
         </div>
       </div>

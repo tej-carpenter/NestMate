@@ -6,7 +6,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import ListingPageTemplate from "@/components/listings/listing-page-template";
-import { deleteListingById, getCurrentSessionUser, getHostProfileForListing, getListingBySlug, getListingInventory, type ListingActor, type ListingInventoryItem, type PublicHostProfile } from "@/lib/local-data";
+import { deleteListingById, getCurrentSessionUser, getHostProfileForListing, getListingBySlug, getListingInventory, getPublicListingBySlug, type ListingActor, type ListingInventoryItem, type PublicHostProfile } from "@/lib/local-data";
 
 function ListingDetailLoading() {
   return (
@@ -31,12 +31,14 @@ export default function ListingDetailPage({ params }: { params: Promise<{ slug: 
   useEffect(() => {
     const handle = window.setTimeout(() => {
       const nextInventory = getListingInventory();
-      const nextListing = getListingBySlug(resolvedParams.slug);
+      const sessionUser = getCurrentSessionUser();
+      const publicListing = getPublicListingBySlug(resolvedParams.slug);
+      const nextListing = publicListing ?? getListingBySlug(resolvedParams.slug);
 
       setInventory(nextInventory);
       setListing(nextListing);
-      setHostProfile(nextListing ? getHostProfileForListing(nextListing) : null);
-      setCurrentUser(getCurrentSessionUser());
+      setCurrentUser(sessionUser);
+      setHostProfile(nextListing && (publicListing || (sessionUser && (sessionUser.role === "admin" || sessionUser.id === nextListing.ownerId))) ? getHostProfileForListing(nextListing) : null);
       setMounted(true);
     }, 0);
 
@@ -58,12 +60,14 @@ export default function ListingDetailPage({ params }: { params: Promise<{ slug: 
       return <ListingDetailLoading />;
     }
 
-    if (!listing) {
+    const canViewHiddenListing = Boolean(listing && currentUser && (currentUser.role === "admin" || currentUser.id === listing.ownerId));
+
+    if (!listing || (!canViewHiddenListing && listing.status !== "approved")) {
       return (
         <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
           <Card className="p-6">
             <h1 className="text-2xl font-semibold text-[color:var(--foreground)]">Listing not found</h1>
-            <p className="mt-3 text-sm text-[color:var(--muted)]">The listing was not found in your saved inventory. It may be a draft or the local data was cleared.</p>
+            <p className="mt-3 text-sm text-[color:var(--muted)]">The listing is not approved for public viewing or the local data was cleared.</p>
             <div className="mt-5">
               <Button asChild>
                 <Link href="/search">Back to search</Link>

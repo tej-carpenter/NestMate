@@ -9,7 +9,7 @@ const navItems = [
   { href: "/search", label: "Search" },
   { href: "/nestscore", label: "NestScore" },
   { href: "/map", label: "Map" },
-  { href: "/city/bengaluru", label: "City pages" },
+  { href: "/city/Indore", label: "City pages" },
 ];
 
 export function SiteHeader() {

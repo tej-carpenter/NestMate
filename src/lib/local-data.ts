@@ -1,6 +1,10 @@
 import { readLocalSession, type AppAccessRole } from "@/lib/session";
+import { normalizeRole } from "@/lib/auth/roles";
+import { canCreateListing, canDeleteListing, canEditListing, canModerateListings, isAuthenticatedSession } from "@/lib/auth/permissions";
 import type { ListingWizardInput } from "@/lib/validators/listing";
 import { buildListingThumbnail } from "@/lib/listing-thumbnail";
+import { getListingApprovalExpiry, isPublicListingStatus, normalizeListingStatus, normalizeModerationState, type ListingModerationState, type ListingStatus, listingReviewValidityMs } from "@/lib/listings/status";
+import { ensureVerificationRequest, getVerificationSummary, updateVerificationChecklist } from "@/lib/verification/requests";
 
 type ListingBaseRecord = {
   id: string;
@@ -19,7 +23,14 @@ type ListingBaseRecord = {
   nestscore: number;
   verified: boolean;
   reviewCount: number;
-  status: "draft" | "published" | "suspended";
+  status: ListingStatus;
+  moderationState: ListingModerationState;
+  rejectionReason: string | null;
+  suspensionReason: string | null;
+  approvedAt: number | null;
+  reviewedAt: number | null;
+  expiresAt: number | null;
+  archivedAt: number | null;
   description: string;
   amenities: string[];
   mapPosition: { left: string; top: string };
@@ -30,7 +41,10 @@ export interface PersistedUser {
   id: string;
   phone: string;
   name: string;
+  email: string | null;
   role: AppAccessRole;
+  phoneVerifiedAt: number | null;
+  emailVerifiedAt: number | null;
   createdAt: number;
   lastLoginAt: number;
   loginCount: number;
@@ -47,7 +61,6 @@ export interface ListingInventoryItem extends ListingBaseRecord {
   kind: "hotel" | "pg" | "hostel" | "room" | "bed" | "apartment" | "lodge";
   totalUnits: number;
   availableUnits: number;
-  blacklisted: boolean;
   hostUserPhone?: string;
 }
 
@@ -73,6 +86,7 @@ export interface HostProfileRecord {
 
 export interface PublicHostProfile {
   id: string;
+  verificationSubjectId: string | null;
   displayName: string;
   profilePhoto: string;
   verified: boolean;
@@ -296,7 +310,7 @@ export function getCurrentSessionUser(): ListingActor | null {
 }
 
 export function canManageListing(listing: ListingInventoryItem, actor: ListingActor | null = getCurrentSessionUser()) {
-  return Boolean(actor && (actor.role === "admin" || actor.id === listing.ownerId));
+  return canEditListing(actor, listing);
 }
 
 const manualPayoutProcessor: PayoutProcessor = {
@@ -321,6 +335,27 @@ type LegacyListingLike = Partial<ListingBaseRecord> &
     hostUserPhone?: string;
   };
 
+function applyListingLifecycleRules(listing: ListingInventoryItem, now = Date.now()) {
+  if (listing.status === "approved") {
+    const expiresAt = listing.expiresAt ?? getListingApprovalExpiry(listing.approvedAt ?? listing.createdAt, listingReviewValidityMs);
+
+    if (expiresAt <= now) {
+      return {
+        ...listing,
+        status: "expired" as const,
+        expiresAt,
+      };
+    }
+
+    return {
+      ...listing,
+      expiresAt,
+    };
+  }
+
+  return listing;
+}
+
 function normalizeListingRecord(property: LegacyListingLike): ListingInventoryItem {
   const title = property.title ?? "Untitled stay";
   const city = property.city ?? "Unknown city";
@@ -328,6 +363,7 @@ function normalizeListingRecord(property: LegacyListingLike): ListingInventoryIt
   const spaceType = property.spaceType ?? "pg";
   const kind = property.kind ?? inferListingKind({ spaceType });
   const users = getUsers();
+  const now = Date.now();
   const matchedOwner =
     typeof property.ownerId === "string"
       ? property.ownerId
@@ -338,8 +374,18 @@ function normalizeListingRecord(property: LegacyListingLike): ListingInventoryIt
           : null;
 
   const nestscore = typeof property.nestscore === "number" ? property.nestscore : 0;
+  const normalizedStatus = normalizeListingStatus(property.status, property.createdAt || property.created_at ? "draft" : "pending_review");
+  const moderationState = normalizeModerationState(property.moderationState ?? (property.blacklisted ? "suspended" : null));
+  const approvedAt = typeof property.approvedAt === "number" ? property.approvedAt : null;
+  const reviewedAt = typeof property.reviewedAt === "number" ? property.reviewedAt : null;
+  const rejectionReason = typeof property.rejectionReason === "string" ? property.rejectionReason : null;
+  const suspensionReason = typeof property.suspensionReason === "string" ? property.suspensionReason : null;
+  const archivedAt = typeof property.archivedAt === "number" ? property.archivedAt : null;
+  const expiresAt = typeof property.expiresAt === "number" ? property.expiresAt : normalizedStatus === "approved" ? getListingApprovalExpiry(approvedAt ?? property.createdAt ?? now, listingReviewValidityMs) : null;
+  const lifecycleStatus = normalizedStatus === "approved" && expiresAt !== null && expiresAt <= now ? "expired" : normalizedStatus;
+  const propertyVerified = property.id ? getVerificationSummary("listing", property.id).levels.property.status === "approved" : false;
 
-  return {
+  return applyListingLifecycleRules({
     id: property.id ?? makeId("lst"),
     slug: property.slug ?? toSlug(`${title}-${city}-${locality}`),
     ownerId: matchedOwner ?? property.hostUserPhone ?? "",
@@ -359,9 +405,16 @@ function normalizeListingRecord(property: LegacyListingLike): ListingInventoryIt
     priceType: property.priceType ?? "monthly",
     spaceType,
     nestscore,
-    verified: property.verified ?? false,
+    verified: property.verified ?? propertyVerified,
     reviewCount: Math.max(0, property.reviewCount ?? 0),
-    status: property.status ?? "draft",
+    status: lifecycleStatus,
+    moderationState,
+    rejectionReason,
+    suspensionReason,
+    approvedAt,
+    reviewedAt,
+    expiresAt,
+    archivedAt,
     description: property.description ?? "",
     amenities: property.amenities ?? [],
     mapPosition: property.mapPosition ?? buildMapPosition(`${title}-${city}-${locality}`),
@@ -372,16 +425,15 @@ function normalizeListingRecord(property: LegacyListingLike): ListingInventoryIt
         city,
         locality,
         spaceType: spaceType as ListingInventoryItem["spaceType"],
-        verified: property.verified ?? false,
+        verified: property.verified ?? propertyVerified,
         nestscore,
-        status: property.status ?? "draft",
+        status: lifecycleStatus,
       }),
     kind,
     totalUnits: property.totalUnits ?? 0,
     availableUnits: property.availableUnits ?? 0,
-    blacklisted: property.blacklisted ?? false,
     hostUserPhone: typeof property.hostUserPhone === "string" ? property.hostUserPhone : undefined,
-  };
+  }, now);
 }
 
 export function getHostProfiles() {
@@ -432,9 +484,10 @@ function buildFallbackHostProfile(listing: ListingInventoryItem): PublicHostProf
   const displayName = `${listing.city} host team`;
   return {
     id: `fallback-${listing.id}`,
+    verificationSubjectId: null,
     displayName,
     profilePhoto: buildHostAvatar(displayName),
-    verified: listing.verified,
+    verified: false,
     joinedAt: Date.now(),
     responsePreference: {
       preferredChannel: "in_app_chat",
@@ -450,7 +503,7 @@ function buildFallbackHostProfile(listing: ListingInventoryItem): PublicHostProf
         city: listing.city,
         locality: listing.locality,
         thumbnail: listing.thumbnail,
-        verified: listing.verified,
+        verified: getVerificationSummary("listing", listing.id).levels.property.status === "approved",
       },
     ],
   };
@@ -465,9 +518,10 @@ export function getHostProfileForListing(listing: ListingInventoryItem): PublicH
   const profile = getHostProfiles().find((entry) => entry.userPhone === hostPhone);
   const users = getUsers();
   const user = users.find((entry) => entry.phone === hostPhone);
+  const hostUserId = user?.id ?? null;
   const inventory = getListingInventory();
   const activeListings = inventory
-    .filter((item) => item.hostUserPhone === hostPhone && item.status === "published" && !item.blacklisted)
+    .filter((item) => item.hostUserPhone === hostPhone && isPublicListingStatus(item.status, item.moderationState))
     .slice(0, 6)
     .map((item) => ({
       id: item.id,
@@ -476,7 +530,7 @@ export function getHostProfileForListing(listing: ListingInventoryItem): PublicH
       city: item.city,
       locality: item.locality,
       thumbnail: item.thumbnail,
-      verified: item.verified,
+      verified: getVerificationSummary("listing", item.id).levels.property.status === "approved",
     }));
 
   if (!profile) {
@@ -484,7 +538,7 @@ export function getHostProfileForListing(listing: ListingInventoryItem): PublicH
     const inferred = upsertHostProfile({
       userPhone: hostPhone,
       displayName: inferredName,
-      verified: Boolean(user && user.role !== "guest"),
+      verified: Boolean(user && user.role === "admin"),
       joinedAt: user?.createdAt,
     });
 
@@ -494,9 +548,10 @@ export function getHostProfileForListing(listing: ListingInventoryItem): PublicH
 
     return {
       id: inferred.id,
+      verificationSubjectId: hostUserId,
       displayName: inferred.displayName,
       profilePhoto: inferred.profilePhoto,
-      verified: inferred.verified,
+      verified: Boolean(hostUserId) && getVerificationSummary("user", hostUserId).levels.contact.status === "approved" && getVerificationSummary("user", hostUserId).levels.owner.status === "approved",
       joinedAt: inferred.joinedAt,
       responsePreference: inferred.responsePreference,
       contactOptions: ["in_app_chat", "visit_request", "call_request"],
@@ -506,9 +561,10 @@ export function getHostProfileForListing(listing: ListingInventoryItem): PublicH
 
   return {
     id: profile.id,
+    verificationSubjectId: hostUserId,
     displayName: profile.displayName,
     profilePhoto: profile.profilePhoto,
-    verified: profile.verified,
+    verified: Boolean(hostUserId) && getVerificationSummary("user", hostUserId).levels.contact.status === "approved" && getVerificationSummary("user", hostUserId).levels.owner.status === "approved",
     joinedAt: profile.joinedAt,
     responsePreference: profile.responsePreference,
     contactOptions: ["in_app_chat", "visit_request", "call_request"],
@@ -566,12 +622,20 @@ export function getListingInventory() {
   return [];
 }
 
+export function getPublicListingInventory() {
+  return getListingInventory().filter((listing) => isPublicListingStatus(listing.status, listing.moderationState));
+}
+
 export function updateListingInventory(next: ListingInventoryItem[]) {
   writeList(storageKeys.listings, next);
 }
 
 export function getListingBySlug(slug: string) {
   return getListingInventory().find((listing) => listing.slug === slug) ?? null;
+}
+
+export function getPublicListingBySlug(slug: string) {
+  return getPublicListingInventory().find((listing) => listing.slug === slug) ?? null;
 }
 
 export function updateListingById(listingId: string, patch: Partial<ListingInventoryItem>) {
@@ -582,26 +646,196 @@ export function updateListingById(listingId: string, patch: Partial<ListingInven
     throw new Error("Listing not found.");
   }
 
-  if (!canManageListing(target)) {
+  if (!canEditListing(getCurrentSessionUser(), target)) {
     throw new Error("Only the listing owner or an admin can edit this listing.");
   }
 
   const actor = getCurrentSessionUser();
-  const { ownerId: _ownerId, createdAt: _createdAt, hostUserPhone: _hostUserPhone, id: _id, slug: _slug, kind: _kind, ...editablePatch } = patch as Partial<ListingInventoryItem> & {
+  const editablePatch = { ...(patch as Partial<ListingInventoryItem> & {
     id?: string;
     slug?: string;
     ownerId?: string;
     createdAt?: number;
     hostUserPhone?: string;
     kind?: ListingInventoryItem["kind"];
-  };
+  }) };
 
-  if (actor?.role !== "admin") {
-    delete editablePatch.blacklisted;
+  delete editablePatch.ownerId;
+  delete editablePatch.createdAt;
+  delete editablePatch.hostUserPhone;
+  delete editablePatch.id;
+  delete editablePatch.slug;
+  delete editablePatch.kind;
+
+  if (!canModerateListings(actor)) {
     delete editablePatch.status;
+    delete editablePatch.moderationState;
+    delete editablePatch.rejectionReason;
+    delete editablePatch.suspensionReason;
+    delete editablePatch.approvedAt;
+    delete editablePatch.reviewedAt;
+    delete editablePatch.expiresAt;
+    delete editablePatch.archivedAt;
   }
 
   const next = listings.map((listing) => (listing.id === listingId ? { ...listing, ...editablePatch } : listing));
+  updateListingInventory(next);
+}
+
+export function approveListingById(listingId: string) {
+  const listings = getListingInventory();
+  const target = getListingByIdFromList(listings, listingId);
+
+  if (!target) {
+    throw new Error("Listing not found.");
+  }
+
+  if (!canModerateListings(getCurrentSessionUser())) {
+    throw new Error("Only admins can approve listings.");
+  }
+
+  const now = Date.now();
+  const next = listings.map((listing) =>
+    listing.id === listingId
+      ? {
+          ...listing,
+          status: "approved" as const,
+          moderationState: "active" as const,
+          approvedAt: now,
+          reviewedAt: now,
+          rejectionReason: null,
+          suspensionReason: null,
+          archivedAt: null,
+          expiresAt: getListingApprovalExpiry(now, listingReviewValidityMs),
+        }
+      : listing,
+  );
+
+  updateListingInventory(next);
+}
+
+export function rejectListingById(listingId: string, reason: string) {
+  const listings = getListingInventory();
+  const target = getListingByIdFromList(listings, listingId);
+
+  if (!target) {
+    throw new Error("Listing not found.");
+  }
+
+  if (!canModerateListings(getCurrentSessionUser())) {
+    throw new Error("Only admins can reject listings.");
+  }
+
+  const trimmedReason = reason.trim();
+  if (!trimmedReason) {
+    throw new Error("A rejection reason is required.");
+  }
+
+  const now = Date.now();
+  const next = listings.map((listing) =>
+    listing.id === listingId
+      ? {
+          ...listing,
+          status: "rejected" as const,
+          moderationState: "active" as const,
+          reviewedAt: now,
+          rejectionReason: trimmedReason,
+          suspensionReason: null,
+          approvedAt: null,
+          expiresAt: null,
+        }
+      : listing,
+  );
+
+  updateListingInventory(next);
+}
+
+export function suspendListingById(listingId: string, reason?: string) {
+  const listings = getListingInventory();
+  const target = getListingByIdFromList(listings, listingId);
+
+  if (!target) {
+    throw new Error("Listing not found.");
+  }
+
+  if (!canModerateListings(getCurrentSessionUser())) {
+    throw new Error("Only admins can suspend listings.");
+  }
+
+  const next = listings.map((listing) =>
+    listing.id === listingId
+      ? {
+          ...listing,
+          moderationState: "suspended" as const,
+          suspensionReason: reason?.trim() || listing.suspensionReason || "Suspended by admin.",
+        }
+      : listing,
+  );
+
+  updateListingInventory(next);
+}
+
+export function archiveListingById(listingId: string, reason?: string) {
+  const listings = getListingInventory();
+  const target = getListingByIdFromList(listings, listingId);
+
+  if (!target) {
+    throw new Error("Listing not found.");
+  }
+
+  if (!canModerateListings(getCurrentSessionUser()) && !canEditListing(getCurrentSessionUser(), target)) {
+    throw new Error("Only the owner or an admin can archive this listing.");
+  }
+
+  const now = Date.now();
+  const next = listings.map((listing) =>
+    listing.id === listingId
+      ? {
+          ...listing,
+          status: "archived" as const,
+          moderationState: "active" as const,
+          archivedAt: now,
+          suspensionReason: reason?.trim() || listing.suspensionReason || null,
+          expiresAt: null,
+        }
+      : listing,
+  );
+
+  updateListingInventory(next);
+}
+
+export function renewExpiredListingById(listingId: string) {
+  const listings = getListingInventory();
+  const target = getListingByIdFromList(listings, listingId);
+
+  if (!target) {
+    throw new Error("Listing not found.");
+  }
+
+  if (!canEditListing(getCurrentSessionUser(), target)) {
+    throw new Error("Only the listing owner or an admin can renew this listing.");
+  }
+
+  if (target.status !== "expired") {
+    throw new Error("Only expired listings can be renewed.");
+  }
+
+  const next = listings.map((listing) =>
+    listing.id === listingId
+      ? {
+          ...listing,
+          status: "pending_review" as const,
+          moderationState: "active" as const,
+          rejectionReason: null,
+          suspensionReason: null,
+          reviewedAt: null,
+          approvedAt: null,
+          archivedAt: null,
+          expiresAt: null,
+        }
+      : listing,
+  );
+
   updateListingInventory(next);
 }
 
@@ -613,7 +847,7 @@ export function deleteListingById(listingId: string) {
     throw new Error("Listing not found.");
   }
 
-  if (!canManageListing(target)) {
+  if (!canDeleteListing(getCurrentSessionUser(), target)) {
     throw new Error("Only the listing owner or an admin can delete this listing.");
   }
 
@@ -626,18 +860,19 @@ export function createListingFromWizard(input: ListingWizardInput) {
   const now = Date.now();
   const actor = getCurrentSessionUser();
 
-  if (!actor || (actor.role !== "user" && actor.role !== "admin")) {
-    throw new Error("Please sign in before creating a listing.");
+  if (!actor || !canCreateListing(actor)) {
+    throw new Error("Only owners and admins can create listings.");
   }
 
+  const currentActor = actor;
   const localSession = readLocalSession();
-  const hostUserPhone = localSession?.phone ?? actor.phone;
+  const hostUserPhone = localSession?.phone ?? currentActor.phone;
   const slugBase = toSlug(`${input.title}-${input.city}-${input.locality}`);
   const slug = listings.some((listing) => listing.slug === slugBase) ? `${slugBase}-${now.toString(36)}` : slugBase;
   const listing: ListingInventoryItem = {
     id: makeId("lst"),
     slug,
-    ownerId: actor.id,
+    ownerId: currentActor.id,
     createdAt: now,
     title: input.title,
     city: input.city,
@@ -651,14 +886,20 @@ export function createListingFromWizard(input: ListingWizardInput) {
     nestscore: 0,
     verified: false,
     reviewCount: 0,
-    status: "draft",
+    status: "pending_review",
+    moderationState: "active",
+    rejectionReason: null,
+    suspensionReason: null,
+    approvedAt: null,
+    reviewedAt: null,
+    expiresAt: null,
+    archivedAt: null,
     description: input.description,
     amenities: input.amenities,
     mapPosition: buildMapPosition(slug),
     kind: inferListingKindFromWizard(input.propertyType),
     totalUnits: 0,
     availableUnits: 0,
-    blacklisted: false,
     hostUserPhone,
     thumbnail: buildListingThumbnail({
       title: input.title,
@@ -667,7 +908,7 @@ export function createListingFromWizard(input: ListingWizardInput) {
       spaceType: input.propertyType,
       verified: false,
       nestscore: 0,
-      status: "draft",
+      status: "pending_review",
       reviewCount: 0,
     }),
   };
@@ -685,14 +926,18 @@ export function createListingFromWizard(input: ListingWizardInput) {
   return listing;
 }
 
-export function upsertUserOnLogin(input: { phone: string; name: string; role: AppAccessRole }) {
-  const users = readList<PersistedUser>(storageKeys.users, []);
+export function upsertUserOnLogin(input: { phone: string; name: string; role: AppAccessRole; email?: string | null; authMethod?: "phone" | "email" }) {
+  const users = getUsers();
   const now = Date.now();
   const existing = users.find((user) => user.phone === input.phone);
+  const nextRole = normalizeRole(input.role) ?? input.role;
 
   if (existing) {
     existing.name = input.name || existing.name;
-    existing.role = input.role;
+    existing.role = nextRole;
+    existing.email = input.email ?? existing.email ?? null;
+    existing.phoneVerifiedAt = input.authMethod === "phone" ? now : existing.phoneVerifiedAt;
+    existing.emailVerifiedAt = input.authMethod === "email" ? now : existing.emailVerifiedAt;
     existing.lastLoginAt = now;
     existing.loginCount += 1;
   } else {
@@ -700,7 +945,10 @@ export function upsertUserOnLogin(input: { phone: string; name: string; role: Ap
       id: makeId("usr"),
       phone: input.phone,
       name: input.name || "Nestmate user",
-      role: input.role,
+      email: input.email ?? null,
+      role: nextRole,
+      phoneVerifiedAt: input.authMethod === "phone" ? now : null,
+      emailVerifiedAt: input.authMethod === "email" ? now : null,
       createdAt: now,
       lastLoginAt: now,
       loginCount: 1,
@@ -710,12 +958,33 @@ export function upsertUserOnLogin(input: { phone: string; name: string; role: Ap
   writeList(storageKeys.users, users);
 
   const currentUser = users.find((user) => user.phone === input.phone) ?? null;
-  if (currentUser && (currentUser.role === "user" || currentUser.role === "admin")) {
+  if (currentUser) {
+    const contactRequest = ensureVerificationRequest({
+      subjectType: "user",
+      subjectId: currentUser.id,
+      subjectLabel: currentUser.name,
+      level: "contact",
+      requesterUserId: currentUser.id,
+      requesterPhone: currentUser.phone,
+      checklist: {
+        phone_otp_verified: Boolean(currentUser.phoneVerifiedAt),
+        email_verified: Boolean(currentUser.emailVerifiedAt),
+      },
+    });
+
+    updateVerificationChecklist({
+      requestId: contactRequest.id,
+      checklistItemKey: input.authMethod === "email" ? "email_verified" : "phone_otp_verified",
+      completed: true,
+    });
+  }
+
+  if (currentUser && canCreateListing(currentUser)) {
     upsertHostProfile({
       userPhone: currentUser.phone,
       displayName: currentUser.name,
       joinedAt: currentUser.createdAt,
-      verified: currentUser.role === "admin",
+      verified: canModerateListings(currentUser),
     });
   }
 
@@ -723,7 +992,7 @@ export function upsertUserOnLogin(input: { phone: string; name: string; role: Ap
   events.unshift({
     id: makeId("lgn"),
     userPhone: input.phone,
-    role: input.role,
+    role: nextRole,
     at: now,
   });
   writeList(storageKeys.loginEvents, events.slice(0, 200));
@@ -732,11 +1001,34 @@ export function upsertUserOnLogin(input: { phone: string; name: string; role: Ap
 }
 
 export function getUsers() {
-  return readList<PersistedUser>(storageKeys.users, []);
+  const users = readList<PersistedUser>(storageKeys.users, []);
+  const normalized = users.map((user) => ({
+    ...user,
+    role: normalizeRole(user.role) ?? "user",
+    email: typeof user.email === "string" ? user.email : null,
+    phoneVerifiedAt: typeof user.phoneVerifiedAt === "number" ? user.phoneVerifiedAt : null,
+    emailVerifiedAt: typeof user.emailVerifiedAt === "number" ? user.emailVerifiedAt : null,
+  }));
+
+  if (normalized.some((user, index) => user.role !== users[index]?.role)) {
+    writeList(storageKeys.users, normalized);
+  }
+
+  return normalized;
 }
 
 export function getLoginEvents() {
-  return readList<LoginEvent>(storageKeys.loginEvents, []);
+  const events = readList<LoginEvent>(storageKeys.loginEvents, []);
+  const normalized = events.map((event) => ({
+    ...event,
+    role: normalizeRole(event.role) ?? event.role,
+  }));
+
+  if (normalized.some((event, index) => event.role !== events[index]?.role)) {
+    writeList(storageKeys.loginEvents, normalized);
+  }
+
+  return normalized;
 }
 
 export function getBookings(userPhone?: string) {
@@ -760,8 +1052,8 @@ export function createBooking(input: {
   // Prevent guests from creating bookings
   const users = getUsers();
   const user = users.find((u) => u.phone === input.userPhone);
-  if (!user || (user.role !== "user" && user.role !== "admin")) {
-    throw new Error("Guests cannot create bookings. Please sign in as a full user to book.");
+  if (!isAuthenticatedSession(user)) {
+    throw new Error("Please sign in to create bookings.");
   }
   const listingInventory = getListingInventory();
   const listing = listingInventory.find((item) => item.slug === input.listingSlug);
@@ -770,8 +1062,8 @@ export function createBooking(input: {
     throw new Error("Listing not found.");
   }
 
-  if (listing.blacklisted) {
-    throw new Error("This listing is currently unavailable.");
+  if (!isPublicListingStatus(listing.status, listing.moderationState)) {
+    throw new Error("This listing is not available for booking.");
   }
 
   if (listing.availableUnits > 0 && input.quantity > listing.availableUnits) {
@@ -1001,8 +1293,8 @@ export function createPaymentForBooking(input: { bookingId: string; userPhone: s
   // Prevent guests from creating payments (extra safety)
   const users = getUsers();
   const user = users.find((u) => u.phone === input.userPhone);
-  if (!user || (user.role !== "user" && user.role !== "admin")) {
-    throw new Error("Guests cannot create payments. Please sign in as a full user.");
+  if (!isAuthenticatedSession(user)) {
+    throw new Error("Please sign in to create payments.");
   }
 
   const payments = readList<PaymentRecord>(storageKeys.payments, []);

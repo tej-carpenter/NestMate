@@ -5,7 +5,7 @@ type ListingThumbnailSource = {
   spaceType: "pg" | "room" | "bed" | "lodge" | "apartment";
   verified: boolean;
   nestscore: number;
-  status: "draft" | "published" | "suspended";
+  status: "draft" | "pending_review" | "approved" | "rejected" | "expired" | "archived";
   reviewCount?: number;
 };
 
@@ -40,7 +40,16 @@ export function buildListingThumbnail(source: ListingThumbnailSource) {
   const score = hasFeedback ? source.nestscore.toFixed(1) : "New";
   const scoreLabel = hasFeedback ? "NestScore" : "Awaiting feedback";
   const label = source.spaceType.toUpperCase();
-  const statusLabel = source.verified ? "Verified" : source.status.toUpperCase();
+  const statusLabels: Record<ListingThumbnailSource["status"], string> = {
+    draft: "Draft",
+    pending_review: "Pending review",
+    approved: "Approved",
+    rejected: "Rejected",
+    expired: "Expired",
+    archived: "Archived",
+  };
+
+  const statusLabel = source.verified ? "Verified" : statusLabels[source.status];
 
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" fill="none">

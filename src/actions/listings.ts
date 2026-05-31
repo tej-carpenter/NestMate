@@ -8,5 +8,5 @@ export async function createListingDraftAction(input: unknown) {
 
 export async function publishListingAction(input: unknown) {
   const listing = listingWizardSchema.parse(input);
-  return { published: true, listing } as const;
+  return { submittedForReview: true, listing } as const;
 }

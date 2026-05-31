@@ -1,9 +1,18 @@
 import { ListingWizard } from "@/components/listings/listing-wizard";
+import { RouteAccessGate } from "@/components/auth/route-access-gate";
 
 export default function NewListingPage() {
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <ListingWizard />
-    </main>
+    <RouteAccessGate
+      variant="creator"
+      title="Sign in as an owner to create a listing"
+      description="Guest browsing is available without login, but listing creation is reserved for owner and admin accounts."
+      actionLabel="Go to login"
+      actionHref="/auth/login"
+    >
+      <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <ListingWizard />
+      </main>
+    </RouteAccessGate>
   );
 }
