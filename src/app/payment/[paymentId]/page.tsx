@@ -53,7 +53,7 @@ export default function PaymentPage({ params }: { params: Promise<{ paymentId: s
           <h1 className="text-2xl font-semibold text-[color:var(--foreground)]">Payment not found</h1>
           <p className="mt-3 text-sm text-[color:var(--muted)]">This payment session does not exist.</p>
           <div className="mt-5">
-            <Button onClick={() => router.push("/guest/bookings")}>Go to bookings</Button>
+            <Button onClick={() => router.push("/profile")}>Go to profile</Button>
           </div>
         </Card>
       </main>
@@ -137,8 +137,8 @@ export default function PaymentPage({ params }: { params: Promise<{ paymentId: s
                 </div>
                 <p className="mt-2 text-sm leading-6">Your booking is confirmed and the wallet credit is ready for future recovery, refund, or reward flows.</p>
                 <div className="mt-4 flex flex-wrap gap-3">
-                  <Button onClick={() => router.push("/guest/bookings")}>Open bookings <ArrowRight className="h-4 w-4" /></Button>
-                  <Button variant="outline" onClick={() => router.push("/guest/wallet")}>Open wallet</Button>
+                  <Button onClick={() => router.push("/profile")}>Open profile <ArrowRight className="h-4 w-4" /></Button>
+                  <Button variant="outline" onClick={() => router.push("/profile")}>Open profile</Button>
                 </div>
               </div>
             ) : null}
@@ -186,8 +186,8 @@ export default function PaymentPage({ params }: { params: Promise<{ paymentId: s
           </details>
 
           <div className="mt-4">
-            <Button variant="ghost" onClick={() => router.push("/guest/bookings")} className="w-full">
-              Open booking history
+            <Button variant="ghost" onClick={() => router.push("/profile")} className="w-full">
+              Open profile
             </Button>
           </div>
         </Card>

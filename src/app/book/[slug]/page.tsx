@@ -65,20 +65,15 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
   }
 
   const selectedListing = listing;
-  const isGuest = session?.role === "guest";
+  const isAuthenticated = Boolean(session && (session.role === "user" || session.role === "admin"));
   const hasResidentFeedback = (selectedListing.reviewCount ?? 0) > 0;
   const hasAvailabilityData = selectedListing.totalUnits > 0 && selectedListing.availableUnits > 0;
 
   function handleCreateBooking(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!session) {
+    if (!isAuthenticated || !session) {
       setStatus("Please login first to continue booking.");
-      return;
-    }
-
-    if (session.role === "guest") {
-      setStatus("Guests are not allowed to create bookings. Please sign up as a user to continue.");
       return;
     }
 
@@ -158,13 +153,13 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
           </div>
 
           <form id="booking-form" className="grid gap-4 p-5 sm:p-8 sm:pt-7 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]" onSubmit={handleCreateBooking}>
-            {isGuest ? (
+            {!isAuthenticated ? (
               <div className="sm:col-span-2">
                 <Card className="p-4 mb-4">
-                  <p className="text-sm text-[color:var(--muted)]">Guests cannot create bookings or access payments. Create a full account to enable booking and wallet features.</p>
+                  <p className="text-sm text-[color:var(--muted)]">Sign in to create bookings and access payment history.</p>
                   <div className="mt-3">
                     <Button asChild>
-                      <Link href="/auth/login">Create a user account</Link>
+                      <Link href="/auth/login">Sign in to continue</Link>
                     </Button>
                   </div>
                 </Card>
@@ -209,7 +204,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Booking action</p>
                 <p className="mt-1 text-sm text-[color:var(--muted)]">Continue to payment only after you lock the stay details.</p>
               </div>
-              <Button type="submit" disabled={isSubmitting || isGuest} className="w-full sm:w-auto">
+              <Button type="submit" disabled={isSubmitting || !isAuthenticated} className="w-full sm:w-auto">
                 {isSubmitting ? "Creating booking..." : "Continue to payment"}
                 <ArrowRight className="h-4 w-4" />
               </Button>
@@ -258,7 +253,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
             <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Move-in total</p>
             <p className="truncate text-sm font-semibold text-slate-950 dark:text-slate-50">{formatRupee(selectedListing.price)} {formatPricePeriod(selectedListing.priceType)}</p>
           </div>
-          <Button type="submit" form="booking-form" className="flex-1" disabled={isGuest}>
+          <Button type="submit" form="booking-form" className="flex-1" disabled={!isAuthenticated}>
             Continue
           </Button>
         </div>

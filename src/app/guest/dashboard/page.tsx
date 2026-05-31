@@ -7,9 +7,9 @@ export default function GuestDashboardPage() {
     <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="grid gap-6 lg:grid-cols-[1fr_0.88fr]">
         <Card className="p-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-300">Guest dashboard</p>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl text-slate-950 dark:text-slate-50">Browse listings before creating a full account</h1>
-          <p className="mt-4 text-base leading-7 text-slate-600 dark:text-slate-300">Guest access is read-only. Create a user account to unlock bookings, payments, and wallet history.</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-300">Browse mode</p>
+          <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl text-slate-950 dark:text-slate-50">Browse listings before signing in</h1>
+          <p className="mt-4 text-base leading-7 text-slate-600 dark:text-slate-300">Anonymous visitors can search, compare, and explore map view. Sign in only when you need bookings, listings, profile, or admin tools.</p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Button asChild>
               <Link href="/search">Search properties</Link>

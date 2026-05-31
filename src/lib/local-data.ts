@@ -5,6 +5,8 @@ import { buildListingThumbnail } from "@/lib/listing-thumbnail";
 type ListingBaseRecord = {
   id: string;
   slug: string;
+  ownerId: string;
+  createdAt: number;
   title: string;
   city: string;
   locality: string;
@@ -48,6 +50,8 @@ export interface ListingInventoryItem extends ListingBaseRecord {
   blacklisted: boolean;
   hostUserPhone?: string;
 }
+
+export type ListingActor = Pick<PersistedUser, "id" | "phone" | "role">;
 
 export type HostContactChannel = "in_app_chat" | "visit_request" | "call_request";
 
@@ -281,6 +285,20 @@ function getListingByIdFromList(listings: ListingInventoryItem[], listingId: str
   return listings.find((listing) => listing.id === listingId) ?? null;
 }
 
+export function getCurrentSessionUser(): ListingActor | null {
+  const session = readLocalSession();
+  if (!session) {
+    return null;
+  }
+
+  const users = getUsers();
+  return users.find((user) => user.id === session.userId) ?? users.find((user) => user.phone === session.phone) ?? null;
+}
+
+export function canManageListing(listing: ListingInventoryItem, actor: ListingActor | null = getCurrentSessionUser()) {
+  return Boolean(actor && (actor.role === "admin" || actor.id === listing.ownerId));
+}
+
 const manualPayoutProcessor: PayoutProcessor = {
   transitionPayout(input) {
     return {
@@ -292,6 +310,10 @@ const manualPayoutProcessor: PayoutProcessor = {
 
 type LegacyListingLike = Partial<ListingBaseRecord> &
   Partial<ListingInventoryItem> & {
+    ownerId?: string;
+    owner_id?: string;
+    createdAt?: number;
+    created_at?: number;
     kind?: ListingInventoryItem["kind"];
     totalUnits?: number;
     availableUnits?: number;
@@ -305,12 +327,28 @@ function normalizeListingRecord(property: LegacyListingLike): ListingInventoryIt
   const locality = property.locality ?? "Unknown locality";
   const spaceType = property.spaceType ?? "pg";
   const kind = property.kind ?? inferListingKind({ spaceType });
+  const users = getUsers();
+  const matchedOwner =
+    typeof property.ownerId === "string"
+      ? property.ownerId
+      : typeof property.owner_id === "string"
+        ? property.owner_id
+        : typeof property.hostUserPhone === "string"
+          ? users.find((user) => user.phone === property.hostUserPhone)?.id ?? null
+          : null;
 
   const nestscore = typeof property.nestscore === "number" ? property.nestscore : 0;
 
   return {
     id: property.id ?? makeId("lst"),
     slug: property.slug ?? toSlug(`${title}-${city}-${locality}`),
+    ownerId: matchedOwner ?? property.hostUserPhone ?? "",
+    createdAt:
+      typeof property.createdAt === "number"
+        ? property.createdAt
+        : typeof property.created_at === "number"
+          ? property.created_at
+          : Date.now(),
     title,
     city,
     locality,
@@ -538,12 +576,47 @@ export function getListingBySlug(slug: string) {
 
 export function updateListingById(listingId: string, patch: Partial<ListingInventoryItem>) {
   const listings = getListingInventory();
-  const next = listings.map((listing) => (listing.id === listingId ? { ...listing, ...patch } : listing));
+  const target = getListingByIdFromList(listings, listingId);
+
+  if (!target) {
+    throw new Error("Listing not found.");
+  }
+
+  if (!canManageListing(target)) {
+    throw new Error("Only the listing owner or an admin can edit this listing.");
+  }
+
+  const actor = getCurrentSessionUser();
+  const { ownerId: _ownerId, createdAt: _createdAt, hostUserPhone: _hostUserPhone, id: _id, slug: _slug, kind: _kind, ...editablePatch } = patch as Partial<ListingInventoryItem> & {
+    id?: string;
+    slug?: string;
+    ownerId?: string;
+    createdAt?: number;
+    hostUserPhone?: string;
+    kind?: ListingInventoryItem["kind"];
+  };
+
+  if (actor?.role !== "admin") {
+    delete editablePatch.blacklisted;
+    delete editablePatch.status;
+  }
+
+  const next = listings.map((listing) => (listing.id === listingId ? { ...listing, ...editablePatch } : listing));
   updateListingInventory(next);
 }
 
 export function deleteListingById(listingId: string) {
   const listings = getListingInventory();
+  const target = getListingByIdFromList(listings, listingId);
+
+  if (!target) {
+    throw new Error("Listing not found.");
+  }
+
+  if (!canManageListing(target)) {
+    throw new Error("Only the listing owner or an admin can delete this listing.");
+  }
+
   const next = listings.filter((listing) => listing.id !== listingId);
   updateListingInventory(next);
 }
@@ -551,13 +624,21 @@ export function deleteListingById(listingId: string) {
 export function createListingFromWizard(input: ListingWizardInput) {
   const listings = getListingInventory();
   const now = Date.now();
+  const actor = getCurrentSessionUser();
+
+  if (!actor || (actor.role !== "user" && actor.role !== "admin")) {
+    throw new Error("Please sign in before creating a listing.");
+  }
+
   const localSession = readLocalSession();
-  const hostUserPhone = localSession && localSession.role !== "guest" ? localSession.phone : undefined;
+  const hostUserPhone = localSession?.phone ?? actor.phone;
   const slugBase = toSlug(`${input.title}-${input.city}-${input.locality}`);
   const slug = listings.some((listing) => listing.slug === slugBase) ? `${slugBase}-${now.toString(36)}` : slugBase;
   const listing: ListingInventoryItem = {
     id: makeId("lst"),
     slug,
+    ownerId: actor.id,
+    createdAt: now,
     title: input.title,
     city: input.city,
     locality: input.locality,
@@ -629,7 +710,7 @@ export function upsertUserOnLogin(input: { phone: string; name: string; role: Ap
   writeList(storageKeys.users, users);
 
   const currentUser = users.find((user) => user.phone === input.phone) ?? null;
-  if (currentUser && currentUser.role !== "guest") {
+  if (currentUser && (currentUser.role === "user" || currentUser.role === "admin")) {
     upsertHostProfile({
       userPhone: currentUser.phone,
       displayName: currentUser.name,
@@ -679,7 +760,7 @@ export function createBooking(input: {
   // Prevent guests from creating bookings
   const users = getUsers();
   const user = users.find((u) => u.phone === input.userPhone);
-  if (!user || user.role === "guest") {
+  if (!user || (user.role !== "user" && user.role !== "admin")) {
     throw new Error("Guests cannot create bookings. Please sign in as a full user to book.");
   }
   const listingInventory = getListingInventory();
@@ -920,7 +1001,7 @@ export function createPaymentForBooking(input: { bookingId: string; userPhone: s
   // Prevent guests from creating payments (extra safety)
   const users = getUsers();
   const user = users.find((u) => u.phone === input.userPhone);
-  if (!user || user.role === "guest") {
+  if (!user || (user.role !== "user" && user.role !== "admin")) {
     throw new Error("Guests cannot create payments. Please sign in as a full user.");
   }
 

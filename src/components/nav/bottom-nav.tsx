@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Home, Search, MapPinned, Wallet, PlusCircle, UserRound } from "lucide-react";
+import { Home, Search, MapPinned, PlusCircle, UserRound, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { readLocalSession } from "@/lib/session";
 
@@ -33,9 +33,9 @@ export function BottomNav() {
     return [
       ...baseItems,
       {
-        href: session.role === "guest" ? "/guest/dashboard" : session.role === "admin" ? "/admin/dashboard" : "/profile",
-        label: session.role === "guest" ? "Trips" : "Profile",
-        icon: session.role === "guest" ? Wallet : UserRound,
+        href: session.role === "admin" ? "/admin/dashboard" : "/profile",
+        label: session.role === "admin" ? "Admin" : "Profile",
+        icon: session.role === "admin" ? ShieldCheck : UserRound,
       },
     ] as const;
   }, [session]);

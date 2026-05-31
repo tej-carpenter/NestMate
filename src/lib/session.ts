@@ -1,6 +1,7 @@
-export type AppAccessRole = "guest" | "user" | "admin";
+export type AppAccessRole = "user" | "admin";
 
 export interface LocalAuthSession {
+  userId: string;
   phone: string;
   name: string;
   role: AppAccessRole;
@@ -14,11 +15,7 @@ export function getPostLoginRoute(role: AppAccessRole) {
     return "/admin/dashboard";
   }
 
-  if (role === "user") {
-    return "/profile";
-  }
-
-  return "/guest/dashboard";
+  return "/profile";
 }
 
 export function readLocalSession() {

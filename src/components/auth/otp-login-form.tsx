@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { ArrowRight, BadgeCheck, Home, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -13,21 +13,17 @@ import { getPostLoginRoute, readLocalSession, writeLocalSession } from "@/lib/se
 const phoneSchema = z.string().min(8).max(16);
 const emailSchema = z.string().email();
 const otpSchema = z.string().min(4).max(8);
+
 const loginRoles = [
-  {
-    value: "guest" as const,
-    title: "Guest",
-    description: "Browse verified homes, save places, and continue to guest bookings.",
-  },
   {
     value: "user" as const,
     title: "User",
-    description: "Access your profile, booking history, and personal preferences.",
+    description: "Book stays, create listings, and manage your profile.",
   },
   {
     value: "admin" as const,
     title: "Admin",
-    description: "Manage moderation, edit listings, and review platform activity.",
+    description: "Moderate listings, review platform activity, and access admin tools.",
   },
 ] as const;
 
@@ -37,7 +33,7 @@ export function OtpLoginForm() {
   const [phone, setPhone] = useState("+91");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<(typeof loginRoles)[number]["value"]>("guest");
+  const [role, setRole] = useState<(typeof loginRoles)[number]["value"]>("user");
   const [loginMethod, setLoginMethod] = useState<"phone" | "email">("phone");
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"request" | "verify">("request");
@@ -62,8 +58,6 @@ export function OtpLoginForm() {
     return () => window.clearTimeout(handle);
   }, []);
 
-  const nextRoute = getPostLoginRoute(role);
-
   function selectRole(value: (typeof loginRoles)[number]["value"]) {
     setRole(value);
     window.requestAnimationFrame(() => {
@@ -75,13 +69,18 @@ export function OtpLoginForm() {
     const identifier = loginMethod === "email" ? emailSchema.parse(email) : phoneSchema.parse(phone);
     const normalizedName = name.trim() || "Nestmate user";
 
-    upsertUserOnLogin({
+    const currentUser = upsertUserOnLogin({
       phone: identifier,
       name: normalizedName,
       role,
     });
 
+    if (!currentUser) {
+      throw new Error("Unable to create session");
+    }
+
     writeLocalSession({
+      userId: currentUser.id,
       phone: identifier,
       name: normalizedName,
       role,
@@ -91,7 +90,14 @@ export function OtpLoginForm() {
 
   async function handleRequestOtp(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const identifier = loginMethod === "email" ? emailSchema.parse(email) : phoneSchema.parse(phone);
+    const identifierResult = loginMethod === "email" ? emailSchema.safeParse(email) : phoneSchema.safeParse(phone);
+
+    if (!identifierResult.success) {
+      setStatus(identifierResult.error.issues[0]?.message ?? "Please enter a valid contact detail.");
+      return;
+    }
+
+    const identifier = identifierResult.data;
     setIsSubmitting(true);
     setStatus(null);
 
@@ -118,8 +124,21 @@ export function OtpLoginForm() {
 
   async function handleVerifyOtp(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const identifier = loginMethod === "email" ? emailSchema.parse(email) : phoneSchema.parse(phone);
-    const parsedOtp = otpSchema.parse(otp);
+    const identifierResult = loginMethod === "email" ? emailSchema.safeParse(email) : phoneSchema.safeParse(phone);
+    const otpResult = otpSchema.safeParse(otp);
+
+    if (!identifierResult.success) {
+      setStatus(identifierResult.error.issues[0]?.message ?? "Please enter a valid contact detail.");
+      return;
+    }
+
+    if (!otpResult.success) {
+      setStatus(otpResult.error.issues[0]?.message ?? "Please enter a valid verification code.");
+      return;
+    }
+
+    const identifier = identifierResult.data;
+    const parsedOtp = otpResult.data;
     setIsSubmitting(true);
     setStatus(null);
 
@@ -146,46 +165,16 @@ export function OtpLoginForm() {
   }
 
   return (
-    <div className="glass-panel mx-auto w-full max-w-5xl rounded-[2.5rem] p-6 sm:p-8 lg:p-10">
-      <div className="grid gap-6 lg:grid-cols-[1.02fr_0.98fr] lg:items-start">
-        <div className="space-y-4">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-300">OTP login</p>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl leading-[0.96] text-slate-950 dark:text-slate-50 sm:text-4xl">Choose how you want to continue</h1>
-          <p className="max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Pick the account type first so Nestmate can send you to the right place after login: guest dashboard, profile, or admin tools.
-          </p>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              { icon: Home, label: "Guest feed" },
-              { icon: UserRound, label: "Profile workspace" },
-              { icon: ShieldCheck, label: "Admin tools" },
-            ].map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <div key={item.label} className="rounded-[1.35rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4">
-                  <Icon className="h-5 w-5 text-teal-700 dark:text-teal-300" />
-                  <p className="mt-3 text-sm font-semibold text-slate-950 dark:text-slate-50">{item.label}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="rounded-[1.6rem] border border-[color:var(--border)] bg-[color:var(--surface)]/90 p-5 backdrop-blur">
-          <div className="flex items-start justify-between gap-3 rounded-[1.35rem] border border-[color:var(--border)] bg-[linear-gradient(180deg,rgba(15,118,110,0.08),rgba(255,255,255,0.96))] p-4 dark:bg-[linear-gradient(180deg,rgba(15,118,110,0.18),rgba(15,23,42,0.92))]">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Next destination</p>
-              <p className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-50">{nextRoute}</p>
-            </div>
-            <BadgeCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">Once verified, we route you directly to the correct surface. That keeps the flow fast and predictable on mobile.</p>
-        </div>
+    <div className="glass-panel mx-auto w-full max-w-2xl rounded-[2.5rem] p-6 sm:p-8 lg:p-10">
+      <div className="space-y-4">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-300">OTP login</p>
+        <h1 className="font-[family-name:var(--font-display)] text-3xl leading-[0.96] text-slate-950 dark:text-slate-50 sm:text-4xl">Sign in to continue</h1>
+        <p className="max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+          Anonymous browsing stays available without login. Choose the account type you want to verify.
+        </p>
       </div>
 
-      <div className="mt-8 grid gap-3 md:grid-cols-3">
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {loginRoles.map((item) => (
           <button
             key={item.value}
@@ -204,9 +193,9 @@ export function OtpLoginForm() {
         ))}
       </div>
 
-      <div ref={loginSectionRef} />
+      <div ref={loginSectionRef} className="pt-6" />
 
-      <form className="mt-8 space-y-4" onSubmit={step === "request" ? handleRequestOtp : handleVerifyOtp}>
+      <form className="space-y-4" onSubmit={step === "request" ? handleRequestOtp : handleVerifyOtp}>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant={loginMethod === "phone" ? "secondary" : "outline"} onClick={() => setLoginMethod("phone")}>
             Phone OTP
@@ -221,6 +210,7 @@ export function OtpLoginForm() {
           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Display name</span>
           <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Your name" />
         </label>
+
         {loginMethod === "email" ? (
           <label className="space-y-2">
             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Email address</span>
@@ -254,6 +244,17 @@ export function OtpLoginForm() {
       </form>
 
       {status ? <p className="mt-4 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--foreground)]">{status}</p> : null}
+
+      <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-600 dark:text-slate-300">
+        <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2">
+          <UserRound className="h-4 w-4 text-teal-700 dark:text-teal-300" />
+          User accounts can book and list
+        </span>
+        <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2">
+          <ShieldCheck className="h-4 w-4 text-teal-700 dark:text-teal-300" />
+          Admins can moderate platform activity
+        </span>
+      </div>
     </div>
   );
 }

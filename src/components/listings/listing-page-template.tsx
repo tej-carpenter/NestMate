@@ -10,7 +10,7 @@ import { PropertyMapPreview } from "@/components/listings/property-map-preview";
 import ReviewSection from "@/components/listings/review-section";
 import { HostProfileCard } from "@/components/host/host-profile-card";
 import { formatPricePeriod } from "@/lib/pricing";
-import type { ListingInventoryItem, PublicHostProfile } from "@/lib/local-data";
+import { canManageListing, type ListingActor, type ListingInventoryItem, type PublicHostProfile } from "@/lib/local-data";
 
 const cityLandmarks: Record<string, { name: string; distance: string; note: string }[]> = {
   Bengaluru: [
@@ -89,16 +89,21 @@ export default function ListingPageTemplate({
   listing,
   inventory,
   hostProfile,
+  currentUser,
+  onDeleteListing,
 }: {
   listing: ListingInventoryItem;
   inventory: ListingInventoryItem[];
   hostProfile: PublicHostProfile | null;
+  currentUser: ListingActor | null;
+  onDeleteListing?: (listingId: string) => void;
 }) {
   const heroImages = [listing, ...inventory.filter((item) => item.slug !== listing.slug)].slice(0, 4);
   const landmarks = cityLandmarks[listing.city] ?? cityLandmarks.Bengaluru;
   const availabilityLabel = formatAvailability(listing);
   const hasResidentFeedback = (listing.reviewCount ?? 0) > 0;
   const relatedImage = heroImages[1] ?? listing;
+  const canEditListing = canManageListing(listing, currentUser);
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 pb-28 pt-4 sm:px-6 lg:px-8">
@@ -369,6 +374,26 @@ export default function ListingPageTemplate({
             </div>
 
             {hostProfile ? <HostProfileCard host={hostProfile} currentListingSlug={listing.slug} compact /> : null}
+
+            {canEditListing ? (
+              <div className="mt-4 rounded-[1.35rem] border border-amber-200/70 bg-amber-50 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-900/80 dark:text-amber-100/80">Listing management</p>
+                <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">This property belongs to your account, so you can edit it or remove it from the marketplace.</p>
+                <div className="mt-4 grid gap-3">
+                  <Button asChild variant="outline" className="w-full justify-center">
+                    <Link href={`/host/listings/new?edit=${listing.slug}`}>Edit listing</Link>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full justify-center text-red-700 hover:bg-red-50 hover:text-red-800 dark:text-red-300 dark:hover:bg-red-500/10"
+                    onClick={() => onDeleteListing?.(listing.id)}
+                  >
+                    Delete listing
+                  </Button>
+                </div>
+              </div>
+            ) : null}
 
             <div className="mt-4 grid gap-3">
               <Button asChild className="w-full justify-center" disabled={listing.blacklisted}>

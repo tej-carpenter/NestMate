@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import ListingPageTemplate from "@/components/listings/listing-page-template";
-import { getHostProfileForListing, getListingBySlug, getListingInventory, type ListingInventoryItem, type PublicHostProfile } from "@/lib/local-data";
+import { deleteListingById, getCurrentSessionUser, getHostProfileForListing, getListingBySlug, getListingInventory, type ListingActor, type ListingInventoryItem, type PublicHostProfile } from "@/lib/local-data";
 
 function ListingDetailLoading() {
   return (
@@ -19,11 +20,13 @@ function ListingDetailLoading() {
 }
 
 export default function ListingDetailPage({ params }: { params: Promise<{ slug: string }> | { slug: string } }) {
+  const router = useRouter();
   const resolvedParams = use(params as Promise<{ slug: string }>);
   const [mounted, setMounted] = useState(false);
   const [listing, setListing] = useState<ListingInventoryItem | null>(null);
   const [inventory, setInventory] = useState<ListingInventoryItem[]>([]);
   const [hostProfile, setHostProfile] = useState<PublicHostProfile | null>(null);
+  const [currentUser, setCurrentUser] = useState<ListingActor | null>(null);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -33,11 +36,22 @@ export default function ListingDetailPage({ params }: { params: Promise<{ slug: 
       setInventory(nextInventory);
       setListing(nextListing);
       setHostProfile(nextListing ? getHostProfileForListing(nextListing) : null);
+      setCurrentUser(getCurrentSessionUser());
       setMounted(true);
     }, 0);
 
     return () => window.clearTimeout(handle);
   }, [resolvedParams.slug]);
+
+  function handleDeleteListing(listingId: string) {
+    if (!window.confirm("Delete this listing? This action cannot be undone.")) {
+      return;
+    }
+
+    deleteListingById(listingId);
+    setListing(null);
+    router.push("/search");
+  }
 
   const body = useMemo(() => {
     if (!mounted) {
@@ -60,8 +74,8 @@ export default function ListingDetailPage({ params }: { params: Promise<{ slug: 
       );
     }
 
-    return <ListingPageTemplate listing={listing} inventory={inventory} hostProfile={hostProfile} />;
-  }, [hostProfile, inventory, listing, mounted]);
+    return <ListingPageTemplate listing={listing} inventory={inventory} hostProfile={hostProfile} currentUser={currentUser} onDeleteListing={handleDeleteListing} />;
+  }, [currentUser, handleDeleteListing, hostProfile, inventory, listing, mounted]);
 
   return body;
 }

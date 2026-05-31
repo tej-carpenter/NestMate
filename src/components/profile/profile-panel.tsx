@@ -62,20 +62,20 @@ export function ProfilePanel() {
     );
   }
 
-  if (!session || session.role === "guest") {
+  if (!session || (session.role !== "user" && session.role !== "admin")) {
     return (
       <Card className="mx-auto w-full max-w-2xl p-6 sm:p-8">
         <Badge className="bg-teal-50 text-teal-950 dark:bg-teal-500/15 dark:text-teal-100">Profile</Badge>
         <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl text-slate-950 dark:text-slate-50">Sign in to view your profile</h1>
         <p className="mt-4 text-base leading-7 text-slate-600 dark:text-slate-300">
-          The profile area is reserved for logged-in users and admins. Guests are sent to the guest dashboard instead.
+          The profile area is reserved for logged-in users and admins. Anonymous visitors can browse listings without signing in.
         </p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <Button asChild>
             <Link href="/auth/login">Go to login</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/guest/dashboard">Guest dashboard</Link>
+            <Link href="/search">Browse listings</Link>
           </Button>
         </div>
       </Card>

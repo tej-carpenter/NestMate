@@ -37,15 +37,15 @@ export default function WalletPage() {
       </main>
     );
   }
-  if (session?.role === "guest") {
+  if (!session || (session.role !== "user" && session.role !== "admin")) {
     return (
       <main className="mx-auto w-full max-w-7xl px-4 py-6 pb-20 sm:px-6 sm:py-10 lg:px-8">
         <Card className="p-6">
-          <h2 className="text-lg font-semibold">Wallet not available for guests</h2>
-          <p className="mt-2 text-sm text-[color:var(--muted)]">Guest accounts do not have a wallet or transaction history. Create a full user account to enable NestPay features.</p>
+          <h2 className="text-lg font-semibold">Sign in to view wallet activity</h2>
+          <p className="mt-2 text-sm text-[color:var(--muted)]">Anonymous visitors can browse, but wallet history only appears after login.</p>
           <div className="mt-4">
             <Button asChild>
-              <Link href="/auth/login">Create a user account</Link>
+              <Link href="/auth/login">Sign in</Link>
             </Button>
           </div>
         </Card>
@@ -90,7 +90,7 @@ export default function WalletPage() {
               </span>
             </div>
             <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl text-slate-950 dark:text-slate-50 sm:text-5xl">Balance, cashback, refunds, and transaction history</h1>
-            <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600 dark:text-slate-300">Wallet data is persisted per user login and mirrors the payment trail so the product feels auditable and trustworthy.</p>
+            <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600 dark:text-slate-300">Wallet data is persisted per signed-in account and mirrors the payment trail so the product feels auditable and trustworthy.</p>
           </div>
         </Card>
 

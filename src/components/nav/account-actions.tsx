@@ -22,7 +22,7 @@ export function AccountActions() {
     };
   }, []);
 
-  const profileHref = session?.role === "admin" || session?.role === "user" ? "/profile" : "/guest/dashboard";
+  const profileHref = session?.role === "admin" ? "/admin/dashboard" : "/profile";
 
   return (
     <div suppressHydrationWarning className="flex flex-wrap items-center justify-end gap-2">
@@ -30,20 +30,14 @@ export function AccountActions() {
 
       {session ? (
         <>
-          {session.role === "guest" ? (
-            <Button asChild variant="outline" size="sm" className="hidden md:inline-flex">
-              <Link href={profileHref}>Guest dashboard</Link>
-            </Button>
-          ) : (
-            <Button asChild variant="ghost" size="sm" className="rounded-full px-3">
-              <Link href={profileHref} className="inline-flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-teal-600 text-white shadow-sm shadow-teal-900/20">
-                  <UserRound className="h-4 w-4" />
-                </span>
-                <span className="hidden sm:inline">Profile</span>
-              </Link>
-            </Button>
-          )}
+          <Button asChild variant="ghost" size="sm" className="rounded-full px-3">
+            <Link href={profileHref} className="inline-flex items-center gap-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-teal-600 text-white shadow-sm shadow-teal-900/20">
+                <UserRound className="h-4 w-4" />
+              </span>
+              <span className="hidden sm:inline">{session.role === "admin" ? "Admin" : "Profile"}</span>
+            </Link>
+          </Button>
           <Button
             type="button"
             variant="outline"
