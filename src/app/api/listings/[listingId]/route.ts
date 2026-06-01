@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { approveListing, archiveListing, getListingById, rejectListing, renewExpiredListing, suspendListing, updateListing } from "@/lib/database/listing-store";
+import { approveListing, archiveListing, getListingById, rejectListing, renewExpiredListing, restoreListing, suspendListing, updateListing } from "@/lib/database/listing-store";
 
 const actorSchema = z.object({
   id: z.string().min(1),
-  role: z.enum(["owner", "admin"]),
+  role: z.enum(["user", "admin"]),
 });
 
 const patchSchema = z.object({
   actor: actorSchema.optional(),
-  action: z.enum(["update", "approve", "reject", "suspend", "archive", "renew"]).default("update"),
+  action: z.enum(["update", "approve", "reject", "suspend", "archive", "restore", "renew"]).default("update"),
   reason: z.string().trim().max(500).optional(),
   patch: z.object({
     title: z.string().trim().min(1).max(120).optional(),
@@ -54,7 +54,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ li
 
   const actor = parsed.data.actor;
   const isAdmin = actor?.role === "admin";
-  const isOwner = actor?.role === "owner" && actor.id === listing.host_id;
+  const isOwner = actor?.role === "user" && actor.id === listing.host_id;
 
   if (!isAdmin && !isOwner) {
     return NextResponse.json({ error: "Not allowed" }, { status: 403 });
@@ -79,6 +79,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ li
   if (parsed.data.action === "archive") {
     if (!isAdmin && !isOwner) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
     return NextResponse.json({ listing: await archiveListing(resolvedParams.listingId, parsed.data.reason) });
+  }
+
+  if (parsed.data.action === "restore") {
+    if (!isAdmin && !isOwner) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+    return NextResponse.json({ listing: await restoreListing(resolvedParams.listingId, parsed.data.reason) });
   }
 
   if (parsed.data.action === "renew") {

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { ArrowRight, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -18,12 +18,7 @@ const loginRoles = [
   {
     value: "user" as const,
     title: "User",
-    description: "Book stays, save listings, and manage your profile.",
-  },
-  {
-    value: "owner" as const,
-    title: "Owner",
-    description: "Create listings, manage availability, and review incoming requests.",
+    description: "Book stays, create listings, and manage your profile.",
   },
   {
     value: "admin" as const,
@@ -34,7 +29,6 @@ const loginRoles = [
 
 export function OtpLoginForm() {
   const router = useRouter();
-  const loginSectionRef = useRef<HTMLDivElement | null>(null);
   const [phone, setPhone] = useState("+91");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -57,7 +51,7 @@ export function OtpLoginForm() {
       setName(initialSession.name);
       setRole(initialSession.role);
       setStep("verify");
-      setStatus(`Loaded your ${getAccountLabel(initialSession.role)} session. You can continue or sign out first.`);
+      setStatus(`Loaded your ${getAccountLabel(initialSession.role)} session. Continue with OTP or sign out first.`);
     }, 0);
 
     return () => window.clearTimeout(handle);
@@ -65,9 +59,6 @@ export function OtpLoginForm() {
 
   function selectRole(value: (typeof loginRoles)[number]["value"]) {
     setRole(value);
-    window.requestAnimationFrame(() => {
-      loginSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
   }
 
   function persistSession() {
@@ -174,23 +165,21 @@ export function OtpLoginForm() {
   }
 
   return (
-    <div className="glass-panel mx-auto w-full max-w-2xl rounded-[2.5rem] p-6 sm:p-8 lg:p-10">
-      <div className="space-y-4">
+    <div className="glass-panel mx-auto w-full max-w-xl rounded-[2.25rem] p-5 sm:p-7 lg:p-8">
+      <div className="space-y-3">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-300">OTP login</p>
         <h1 className="font-[family-name:var(--font-display)] text-3xl leading-[0.96] text-slate-950 dark:text-slate-50 sm:text-4xl">Sign in to continue</h1>
-        <p className="max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-          Anonymous browsing stays available without login. Choose the account type you want to verify.
-        </p>
+        <p className="max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">Browse freely when logged out. Pick a role, verify once, and continue.</p>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
         {loginRoles.map((item) => (
           <button
             key={item.value}
             type="button"
             onClick={() => selectRole(item.value)}
             className={cn(
-              "rounded-[1.5rem] border p-4 text-left transition",
+              "rounded-[1.25rem] border p-4 text-left transition",
               role === item.value
                 ? "border-teal-600 bg-teal-50 shadow-sm shadow-teal-950/5 dark:border-teal-300 dark:bg-teal-500/15"
                 : "border-[color:var(--border)] bg-[color:var(--surface-strong)] hover:bg-black/5 dark:hover:bg-white/10",
@@ -202,9 +191,7 @@ export function OtpLoginForm() {
         ))}
       </div>
 
-      <div ref={loginSectionRef} className="pt-6" />
-
-      <form className="space-y-4" onSubmit={step === "request" ? handleRequestOtp : handleVerifyOtp}>
+      <form className="mt-6 space-y-4" onSubmit={step === "request" ? handleRequestOtp : handleVerifyOtp}>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant={loginMethod === "phone" ? "secondary" : "outline"} onClick={() => setLoginMethod("phone")}>
             Phone OTP
@@ -254,16 +241,7 @@ export function OtpLoginForm() {
 
       {status ? <p className="mt-4 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--foreground)]">{status}</p> : null}
 
-      <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-600 dark:text-slate-300">
-        <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2">
-          <UserRound className="h-4 w-4 text-teal-700 dark:text-teal-300" />
-          User accounts can book and list
-        </span>
-        <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 py-2">
-          <ShieldCheck className="h-4 w-4 text-teal-700 dark:text-teal-300" />
-          Admins can moderate platform activity
-        </span>
-      </div>
+      <p className="mt-5 text-sm leading-6 text-slate-600 dark:text-slate-300">User accounts can book, list, and manage profiles. Admin accounts can moderate the platform.</p>
     </div>
   );
 }

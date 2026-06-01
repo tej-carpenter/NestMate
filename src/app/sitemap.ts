@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { siteConfig } from "@/lib/site";
 
-const staticRoutes = ["/", "/search", "/nestscore", "/map", "/auth/login", "/profile", "/host/listings/new", "/host/dashboard", "/host/verification", "/guest/dashboard", "/guest/wallet", "/guest/bookings", "/guest/chat", "/admin/dashboard", "/admin/fraud", "/admin/analytics"];
+const staticRoutes = ["/", "/search", "/nestscore", "/map", "/auth/login", "/profile", "/profile/archived-listings", "/host/listings/new", "/host/dashboard", "/host/verification", "/guest/wallet", "/guest/bookings", "/guest/chat", "/admin/dashboard", "/admin/archived-properties", "/admin/fraud", "/admin/analytics"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const routes: MetadataRoute.Sitemap = staticRoutes.map((route) => ({

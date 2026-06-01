@@ -1,5 +1,5 @@
 import type { UserRole } from "@/lib/database/schema";
-import { isAdminRole, isOwnerRole, normalizeRole } from "@/lib/auth/roles";
+import { isAdminRole, isUserRole, normalizeRole } from "@/lib/auth/roles";
 
 export type AppAccessRole = UserRole;
 
@@ -20,8 +20,8 @@ export function getPostLoginRoute(role: AppAccessRole) {
     return "/admin/dashboard";
   }
 
-  if (isOwnerRole(role)) {
-    return "/host/dashboard";
+  if (isUserRole(role)) {
+    return "/profile";
   }
 
   return "/profile";
@@ -32,11 +32,7 @@ export function getAccountLabel(role: AppAccessRole) {
     return "Admin";
   }
 
-  if (isOwnerRole(role)) {
-    return "Owner";
-  }
-
-  return "Profile";
+  return "User";
 }
 
 export function readLocalSession() {

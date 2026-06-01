@@ -1,10 +1,11 @@
 import type { UserRole } from "@/lib/database/schema";
 
-export const appRoles = ["user", "owner", "admin"] as const satisfies readonly UserRole[];
+export const appRoles = ["user", "admin"] as const satisfies readonly UserRole[];
 
 const legacyRoleMap: Record<string, UserRole> = {
   guest: "user",
-  host: "owner",
+  host: "user",
+  owner: "user",
 };
 
 export function isRole(value: string): value is UserRole {
@@ -27,6 +28,6 @@ export function isAdminRole(role: UserRole) {
   return role === "admin";
 }
 
-export function isOwnerRole(role: UserRole) {
-  return role === "owner";
+export function isUserRole(role: UserRole) {
+  return role === "user";
 }

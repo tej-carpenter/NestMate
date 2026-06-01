@@ -1,4 +1,4 @@
-export type UserRole = "user" | "owner" | "admin";
+export type UserRole = "user" | "admin";
 
 export interface UserRecord {
   id: string;
@@ -35,6 +35,32 @@ export interface ListingRecord {
   expires_at: string | null;
   archived_at: string | null;
   created_at: string;
+}
+
+export type ArchivedPropertyReason = "owner_removed" | "admin_removed" | "policy_violation" | "duplicate_listing" | "expired" | "other";
+
+export interface ArchivedPropertyRecord {
+  id: string;
+  original_property_id: string;
+  owner_id: string;
+  owner_phone: string;
+  owner_name: string;
+  title: string;
+  description: string;
+  location: string;
+  pricing: {
+    amount: number;
+    price_type: ListingRecord["price_type"];
+  };
+  property_type: ListingRecord["space_type"];
+  status: ListingRecord["status"];
+  archived_reason: ArchivedPropertyReason;
+  archived_by: string;
+  archived_at: string;
+  original_created_at: string;
+  restored_by: string | null;
+  restored_at: string | null;
+  listing_snapshot: ListingRecord;
 }
 
 export interface BookingRecord {

@@ -181,6 +181,9 @@ export function ProfilePanel() {
           <Button asChild variant="outline">
             <Link href="/guest/wallet">Payment history</Link>
           </Button>
+          <Button asChild variant="outline">
+            <Link href="/profile/archived-listings">My Archived Listings</Link>
+          </Button>
           <Button
             variant="outline"
             onClick={() => {

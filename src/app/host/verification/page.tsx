@@ -5,8 +5,8 @@ export default function HostVerificationPage() {
   return (
     <RouteAccessGate
       variant="creator"
-      title="Sign in as an owner to access verification"
-      description="Owner and admin accounts can complete verification before publishing listings."
+      title="Sign in as a user to access verification"
+      description="User and admin accounts can complete verification before publishing listings."
       actionLabel="Go to login"
       actionHref="/auth/login"
     >

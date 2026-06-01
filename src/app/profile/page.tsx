@@ -6,7 +6,7 @@ export default function ProfilePage() {
     <RouteAccessGate
       variant="authenticated"
       title="Sign in to view your profile"
-      description="The profile area is reserved for signed-in users and admins. Anonymous visitors can browse listings without signing in."
+      description="The profile area is reserved for signed-in users and admins. Anonymous visitors can browse listings without signing in. You can also review your archived listings from here."
       actionLabel="Go to login"
       actionHref="/auth/login"
     >

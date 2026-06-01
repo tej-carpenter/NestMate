@@ -20,6 +20,7 @@ import {
   rejectListingById,
   renewExpiredListingById,
   suspendListingById,
+  restoreListingById,
   updatePayoutStatus,
 } from "@/lib/local-data";
 import { formatDateTime, formatRupee } from "@/lib/format";
@@ -119,6 +120,12 @@ export default function AdminDashboardPage() {
     refresh();
   }
 
+  function restoreListing(listingId: string) {
+    const reason = window.prompt("Enter the restore note")?.trim();
+    restoreListingById(listingId, reason);
+    refresh();
+  }
+
   function archiveListing(listingId: string) {
     const reason = window.prompt("Enter the archive reason")?.trim();
     archiveListingById(listingId, reason);
@@ -173,6 +180,9 @@ export default function AdminDashboardPage() {
           <div className="mt-5">
             <Button asChild>
               <Link href="/admin/payouts">Open payout operations</Link>
+            </Button>
+            <Button asChild variant="outline" className="ml-3">
+              <Link href="/admin/archived-properties">Archived properties</Link>
             </Button>
           </div>
         </Card>
@@ -303,6 +313,11 @@ export default function AdminDashboardPage() {
                     Reject
                   </Button>
                 ) : null}
+                {property.moderationState === "suspended" || property.status === "archived" ? (
+                  <Button variant="outline" className="sm:flex-1" onClick={() => restoreListing(property.id)}>
+                    Restore
+                  </Button>
+                ) : null}
                 {property.status === "approved" ? (
                   <Button variant="outline" className="sm:flex-1" onClick={() => suspendListing(property.id)}>
                     Suspend
@@ -319,7 +334,7 @@ export default function AdminDashboardPage() {
                   </Button>
                 ) : null}
                 <Button variant="ghost" className="sm:flex-1" onClick={() => removeListing(property.id)}>
-                  Delete
+                  Archive
                 </Button>
               </div>
             </Card>

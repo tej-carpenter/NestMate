@@ -391,7 +391,7 @@ export default function ListingPageTemplate({
                     className="w-full justify-center text-red-700 hover:bg-red-50 hover:text-red-800 dark:text-red-300 dark:hover:bg-red-500/10"
                     onClick={() => onDeleteListing?.(listing.id)}
                   >
-                    Delete listing
+                    Archive listing
                   </Button>
                 </div>
               </div>

@@ -5,8 +5,8 @@ export default function NewListingPage() {
   return (
     <RouteAccessGate
       variant="creator"
-      title="Sign in as an owner to create a listing"
-      description="Guest browsing is available without login, but listing creation is reserved for owner and admin accounts."
+      title="Sign in as a user to create a listing"
+      description="Anonymous browsing stays available without login, but listing creation is reserved for user and admin accounts."
       actionLabel="Go to login"
       actionHref="/auth/login"
     >

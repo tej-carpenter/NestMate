@@ -10,6 +10,7 @@ import {
   rejectListingById,
   renewExpiredListingById,
   suspendListingById,
+  restoreListingById,
   type ListingInventoryItem,
 } from "@/lib/local-data";
 
@@ -49,6 +50,10 @@ export function rejectListing(listingId: string, reason: string) {
 
 export function suspendListing(listingId: string, reason?: string) {
   return suspendListingById(listingId, reason);
+}
+
+export function restoreListing(listingId: string, reason?: string) {
+  return restoreListingById(listingId, reason);
 }
 
 export function archiveListing(listingId: string, reason?: string) {

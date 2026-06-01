@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
-import { getVerificationSummary, type VerificationSubjectType } from "@/lib/verification/requests";
+import { getVerificationSummary } from "@/lib/verification/requests";
+import type { VerificationSubjectType } from "@/lib/verification/status";
 
 const toneClasses = {
   success: "border-emerald-500/20 bg-emerald-50 text-emerald-950 dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-50",

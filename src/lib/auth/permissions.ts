@@ -26,7 +26,7 @@ export function canContactOwner(session: AccessSession) {
 }
 
 export function canCreateListing(session: AccessSession) {
-  return Boolean(session && (session.role === "owner" || session.role === "admin"));
+  return Boolean(session);
 }
 
 export function canEditListing(actor: AccessPrincipal, listing: ListingOwnerLike) {

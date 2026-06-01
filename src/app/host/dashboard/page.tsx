@@ -5,8 +5,8 @@ export default function HostDashboardPage() {
   return (
     <RouteAccessGate
       variant="creator"
-      title="Sign in as an owner to open the host dashboard"
-      description="Only owner and admin accounts can manage listings, bookings, and payout workflows."
+      title="Sign in as a user to open the host dashboard"
+      description="Only user and admin accounts can manage listings, bookings, and payout workflows."
       actionLabel="Go to login"
       actionHref="/auth/login"
     >

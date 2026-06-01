@@ -4,7 +4,7 @@ import { createListing, listListings } from "@/lib/database/listing-store";
 
 const actorSchema = z.object({
   id: z.string().min(1),
-  role: z.enum(["owner", "admin"]),
+  role: z.enum(["user", "admin"]),
 });
 
 const createSchema = z.object({
@@ -41,8 +41,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  if (parsed.data.actor.role !== "owner" && parsed.data.actor.role !== "admin") {
-    return NextResponse.json({ error: "Only owners and admins can create listings." }, { status: 403 });
+  if (parsed.data.actor.role !== "user" && parsed.data.actor.role !== "admin") {
+    return NextResponse.json({ error: "Only users and admins can create listings." }, { status: 403 });
   }
 
   const listing = await createListing(

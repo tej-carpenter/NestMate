@@ -64,6 +64,34 @@ export interface ListingInventoryItem extends ListingBaseRecord {
   hostUserPhone?: string;
 }
 
+export const archivedPropertyReasons = ["owner_removed", "admin_removed", "policy_violation", "duplicate_listing", "expired", "other"] as const;
+
+export type ArchivedPropertyReason = (typeof archivedPropertyReasons)[number];
+
+export interface ArchivedPropertyRecord {
+  id: string;
+  original_property_id: string;
+  owner_id: string;
+  owner_phone: string;
+  owner_name: string;
+  title: string;
+  description: string;
+  location: string;
+  pricing: {
+    amount: number;
+    price_type: ListingInventoryItem["priceType"];
+  };
+  property_type: ListingInventoryItem["spaceType"];
+  status: ListingInventoryItem["status"];
+  archived_reason: ArchivedPropertyReason;
+  archived_by: string;
+  archived_at: number;
+  original_created_at: number;
+  restored_by: string | null;
+  restored_at: number | null;
+  snapshot: ListingInventoryItem;
+}
+
 export type ListingActor = Pick<PersistedUser, "id" | "phone" | "role">;
 
 export type HostContactChannel = "in_app_chat" | "visit_request" | "call_request";
@@ -182,6 +210,7 @@ const storageKeys = {
   hostProfiles: "nestmate.host-profiles.v1",
   loginEvents: "nestmate.login-events.v1",
   listings: "nestmate.listing-inventory.v1",
+  archivedProperties: "nestmate.archived-properties.v1",
   bookings: "nestmate.bookings.v1",
   payments: "nestmate.payments.v1",
   transactions: "nestmate.transactions.v1",
@@ -297,6 +326,76 @@ function getBookingByIdFromList(bookings: BookingRecord[], bookingId: string) {
 
 function getListingByIdFromList(listings: ListingInventoryItem[], listingId: string) {
   return listings.find((listing) => listing.id === listingId) ?? null;
+}
+
+function getArchivedPropertyByIdFromList(records: ArchivedPropertyRecord[], originalPropertyId: string) {
+  return [...records]
+    .filter((record) => record.original_property_id === originalPropertyId)
+    .sort((left, right) => right.archived_at - left.archived_at)[0] ?? null;
+}
+
+function normalizeArchivedReason(value: string | null | undefined, fallback: ArchivedPropertyReason): ArchivedPropertyReason {
+  return archivedPropertyReasons.includes(value as ArchivedPropertyReason) ? (value as ArchivedPropertyReason) : fallback;
+}
+
+function buildArchivedRecord(input: {
+  listing: ListingInventoryItem;
+  archivedReason: ArchivedPropertyReason;
+  archivedBy: string;
+  ownerName: string;
+  ownerPhone: string;
+}): ArchivedPropertyRecord {
+  return {
+    id: makeId("arc"),
+    original_property_id: input.listing.id,
+    owner_id: input.listing.ownerId,
+    owner_phone: input.ownerPhone,
+    owner_name: input.ownerName,
+    title: input.listing.title,
+    description: input.listing.description,
+    location: `${input.listing.locality}, ${input.listing.city}`,
+    pricing: {
+      amount: input.listing.price,
+      price_type: input.listing.priceType,
+    },
+    property_type: input.listing.spaceType,
+    status: input.listing.status,
+    archived_reason: input.archivedReason,
+    archived_by: input.archivedBy,
+    archived_at: Date.now(),
+    original_created_at: input.listing.createdAt,
+    restored_by: null,
+    restored_at: null,
+    snapshot: input.listing,
+  };
+}
+
+function getArchivedOwnerName(ownerId: string, ownerPhone: string) {
+  const user = getUsers().find((entry) => entry.id === ownerId || entry.phone === ownerPhone);
+  return user?.name || "Nestmate user";
+}
+
+function readArchivedProperties() {
+  return readList<ArchivedPropertyRecord>(storageKeys.archivedProperties, []);
+}
+
+function writeArchivedProperties(records: ArchivedPropertyRecord[]) {
+  writeList(storageKeys.archivedProperties, records);
+}
+
+function archiveListingRecord(listing: ListingInventoryItem, archivedReason: ArchivedPropertyReason, archivedBy: string) {
+  const archivedProperties = readArchivedProperties();
+  const ownerPhone = listing.hostUserPhone ?? getUsers().find((user) => user.id === listing.ownerId)?.phone ?? "";
+  const archivedRecord = buildArchivedRecord({
+    listing,
+    archivedReason,
+    archivedBy,
+    ownerName: getArchivedOwnerName(listing.ownerId, ownerPhone),
+    ownerPhone,
+  });
+
+  writeArchivedProperties([archivedRecord, ...archivedProperties]);
+  return archivedRecord;
 }
 
 export function getCurrentSessionUser(): ListingActor | null {
@@ -519,6 +618,10 @@ export function getHostProfileForListing(listing: ListingInventoryItem): PublicH
   const users = getUsers();
   const user = users.find((entry) => entry.phone === hostPhone);
   const hostUserId = user?.id ?? null;
+  const hostVerificationSummary = hostUserId ? getVerificationSummary("user", hostUserId) : null;
+  const hostIsVerified = hostVerificationSummary
+    ? hostVerificationSummary.levels.contact.status === "approved" && hostVerificationSummary.levels.owner.status === "approved"
+    : false;
   const inventory = getListingInventory();
   const activeListings = inventory
     .filter((item) => item.hostUserPhone === hostPhone && isPublicListingStatus(item.status, item.moderationState))
@@ -551,7 +654,7 @@ export function getHostProfileForListing(listing: ListingInventoryItem): PublicH
       verificationSubjectId: hostUserId,
       displayName: inferred.displayName,
       profilePhoto: inferred.profilePhoto,
-      verified: Boolean(hostUserId) && getVerificationSummary("user", hostUserId).levels.contact.status === "approved" && getVerificationSummary("user", hostUserId).levels.owner.status === "approved",
+      verified: hostIsVerified,
       joinedAt: inferred.joinedAt,
       responsePreference: inferred.responsePreference,
       contactOptions: ["in_app_chat", "visit_request", "call_request"],
@@ -564,7 +667,7 @@ export function getHostProfileForListing(listing: ListingInventoryItem): PublicH
     verificationSubjectId: hostUserId,
     displayName: profile.displayName,
     profilePhoto: profile.profilePhoto,
-    verified: Boolean(hostUserId) && getVerificationSummary("user", hostUserId).levels.contact.status === "approved" && getVerificationSummary("user", hostUserId).levels.owner.status === "approved",
+    verified: hostIsVerified,
     joinedAt: profile.joinedAt,
     responsePreference: profile.responsePreference,
     contactOptions: ["in_app_chat", "visit_request", "call_request"],
@@ -630,6 +733,14 @@ export function updateListingInventory(next: ListingInventoryItem[]) {
   writeList(storageKeys.listings, next);
 }
 
+export function getArchivedProperties() {
+  return readArchivedProperties().sort((left, right) => right.archived_at - left.archived_at);
+}
+
+export function getArchivedPropertiesForOwner(ownerId: string) {
+  return getArchivedProperties().filter((record) => record.owner_id === ownerId);
+}
+
 export function getListingBySlug(slug: string) {
   return getListingInventory().find((listing) => listing.slug === slug) ?? null;
 }
@@ -680,6 +791,26 @@ export function updateListingById(listingId: string, patch: Partial<ListingInven
 
   const next = listings.map((listing) => (listing.id === listingId ? { ...listing, ...editablePatch } : listing));
   updateListingInventory(next);
+}
+
+function archiveActiveListing(listingId: string, reason?: string) {
+  const listings = getListingInventory();
+  const target = getListingByIdFromList(listings, listingId);
+
+  if (!target) {
+    throw new Error("Listing not found.");
+  }
+
+  const actor = getCurrentSessionUser();
+  if (!canDeleteListing(actor, target) && !canModerateListings(actor)) {
+    throw new Error("Only the listing owner or an admin can archive this listing.");
+  }
+
+  const fallbackReason = target.status === "expired" ? "expired" : actor?.role === "admin" ? "admin_removed" : "owner_removed";
+  const archivedReason = normalizeArchivedReason(reason, fallbackReason);
+  const archivedRecord = archiveListingRecord(target, archivedReason, actor?.id ?? "system");
+  updateListingInventory(listings.filter((listing) => listing.id !== listingId));
+  return archivedRecord;
 }
 
 export function approveListingById(listingId: string) {
@@ -775,33 +906,49 @@ export function suspendListingById(listingId: string, reason?: string) {
   updateListingInventory(next);
 }
 
-export function archiveListingById(listingId: string, reason?: string) {
-  const listings = getListingInventory();
-  const target = getListingByIdFromList(listings, listingId);
+export function restoreListingById(listingId: string, reason?: string) {
+  const archivedProperties = readArchivedProperties();
+  const target = getArchivedPropertyByIdFromList(archivedProperties, listingId);
 
   if (!target) {
-    throw new Error("Listing not found.");
+    throw new Error("Archived listing not found.");
   }
 
-  if (!canModerateListings(getCurrentSessionUser()) && !canEditListing(getCurrentSessionUser(), target)) {
-    throw new Error("Only the owner or an admin can archive this listing.");
+  if (!canModerateListings(getCurrentSessionUser())) {
+    throw new Error("Only admins can restore archived listings.");
   }
+
+  const listings = getListingInventory();
+  const restoredListing = normalizeListingRecord({
+    ...target.snapshot,
+    ownerId: target.owner_id,
+    createdAt: target.original_created_at,
+    archivedAt: null,
+    moderationState: "active",
+    status: target.snapshot.status === "approved" ? "approved" : target.snapshot.status === "draft" ? "draft" : "pending_review",
+  });
+
+  const nextListings = listings.some((listing) => listing.id === restoredListing.id) ? listings : [restoredListing, ...listings];
+  updateListingInventory(nextListings);
 
   const now = Date.now();
-  const next = listings.map((listing) =>
-    listing.id === listingId
+  const nextArchived = archivedProperties.map((record) =>
+    record.id === target.id
       ? {
-          ...listing,
-          status: "archived" as const,
-          moderationState: "active" as const,
-          archivedAt: now,
-          suspensionReason: reason?.trim() || listing.suspensionReason || null,
-          expiresAt: null,
+          ...record,
+          restored_by: getCurrentSessionUser()?.id ?? "system",
+          restored_at: now,
         }
-      : listing,
+      : record,
   );
 
-  updateListingInventory(next);
+  writeArchivedProperties(nextArchived);
+
+  return restoredListing;
+}
+
+export function archiveListingById(listingId: string, reason?: string) {
+  return archiveActiveListing(listingId, reason);
 }
 
 export function renewExpiredListingById(listingId: string) {
@@ -840,19 +987,7 @@ export function renewExpiredListingById(listingId: string) {
 }
 
 export function deleteListingById(listingId: string) {
-  const listings = getListingInventory();
-  const target = getListingByIdFromList(listings, listingId);
-
-  if (!target) {
-    throw new Error("Listing not found.");
-  }
-
-  if (!canDeleteListing(getCurrentSessionUser(), target)) {
-    throw new Error("Only the listing owner or an admin can delete this listing.");
-  }
-
-  const next = listings.filter((listing) => listing.id !== listingId);
-  updateListingInventory(next);
+  return archiveActiveListing(listingId);
 }
 
 export function createListingFromWizard(input: ListingWizardInput) {

@@ -5,8 +5,8 @@ export default function GuestChatPage() {
   return (
     <RouteAccessGate
       variant="authenticated"
-      title="Sign in to contact an owner"
-      description="Guest mode allows browsing only. To message or call a host, sign in to continue."
+      title="Sign in to contact a host"
+      description="Anonymous visitors can browse only. To message or call a host, sign in to continue."
       actionLabel="Go to login"
       actionHref="/auth/login"
     >

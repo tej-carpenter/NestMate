@@ -9,7 +9,7 @@ const storageFile = path.join(storageDirectory, "listings.json");
 
 export type ListingActor = {
   id: string;
-  role: "owner" | "admin";
+  role: "user" | "admin";
 };
 
 export type ListingCreateInput = {
@@ -177,6 +177,19 @@ export async function suspendListing(listingId: string, reason?: string) {
   return updateListing(listingId, {
     moderation_state: "suspended",
     suspension_reason: reason?.trim() || "Suspended by admin.",
+  });
+}
+
+export async function restoreListing(listingId: string, reason?: string) {
+  return updateListing(listingId, {
+    status: "pending_review",
+    moderation_state: "active",
+    rejection_reason: null,
+    suspension_reason: reason?.trim() || null,
+    approved_at: null,
+    reviewed_at: new Date().toISOString(),
+    expires_at: null,
+    archived_at: null,
   });
 }
 
