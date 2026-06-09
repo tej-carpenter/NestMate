@@ -18,6 +18,10 @@ export interface ListingRecord {
   description: string;
   city: string;
   locality: string;
+  address: string;
+  google_maps_url: string | null;
+  // Legacy optional fields. Latitude/longitude are no longer required for
+  // listing creation; they are kept for backwards compatibility.
   latitude: number | null;
   longitude: number | null;
   space_type: "pg" | "room" | "bed" | "lodge" | "apartment";

@@ -4,6 +4,10 @@ export interface MockProperty {
   title: string;
   city: string;
   locality: string;
+  address?: string;
+  googleMapsUrl?: string;
+  // Legacy optional fields. Latitude/longitude are no longer required for
+  // listing creation; they are kept for backwards compatibility.
   latitude?: number;
   longitude?: number;
   genderPreference: "male" | "female" | "any";

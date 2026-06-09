@@ -16,6 +16,8 @@ const patchSchema = z.object({
     description: z.string().trim().min(1).max(5000).optional(),
     city: z.string().trim().min(1).max(80).optional(),
     locality: z.string().trim().min(1).max(120).optional(),
+    address: z.string().trim().min(1).max(240).optional(),
+    googleMapsUrl: z.string().trim().max(2048).optional(),
     latitude: z.number().nullable().optional(),
     longitude: z.number().nullable().optional(),
     price: z.number().int().positive().optional(),

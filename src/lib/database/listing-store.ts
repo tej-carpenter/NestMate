@@ -18,6 +18,8 @@ export type ListingCreateInput = {
   description: string;
   city: string;
   locality: string;
+  address: string;
+  google_maps_url?: string | null;
   latitude: number | null;
   longitude: number | null;
   space_type: ListingRecord["space_type"];
@@ -28,7 +30,7 @@ export type ListingCreateInput = {
   images: string[];
 };
 
-export type ListingUpdateInput = Partial<Pick<ListingRecord, "title" | "description" | "city" | "locality" | "latitude" | "longitude" | "space_type" | "price" | "price_type" | "amenities" | "gender_preference" | "images" | "status" | "moderation_state" | "rejection_reason" | "suspension_reason" | "approved_at" | "reviewed_at" | "expires_at" | "archived_at">>;
+export type ListingUpdateInput = Partial<Pick<ListingRecord, "title" | "description" | "city" | "locality" | "address" | "google_maps_url" | "latitude" | "longitude" | "space_type" | "price" | "price_type" | "amenities" | "gender_preference" | "images" | "status" | "moderation_state" | "rejection_reason" | "suspension_reason" | "approved_at" | "reviewed_at" | "expires_at" | "archived_at">>;
 
 function nowIso() {
   return new Date().toISOString();
@@ -116,6 +118,8 @@ export async function createListing(input: ListingCreateInput, actor: ListingAct
     description: input.description,
     city: input.city,
     locality: input.locality,
+    address: input.address,
+    google_maps_url: input.google_maps_url ?? null,
     latitude: input.latitude,
     longitude: input.longitude,
     space_type: input.space_type,

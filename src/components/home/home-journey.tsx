@@ -1,36 +1,12 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, BadgeCheck, Compass, MapPinned, ShieldCheck, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ArrowRight, BadgeCheck, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ListingCard } from "@/components/listings/listing-card";
 import { getBookings, getPublicListingInventory, type ListingInventoryItem } from "@/lib/local-data";
-import { geocodeListing } from "@/lib/nominatim";
-
-const LeafletMap = dynamic(() => import("@/components/map/leaflet-map"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-[28rem] items-center justify-center rounded-[2rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] text-sm text-[color:var(--muted)] sm:h-[34rem]">
-      Loading discovery map...
-    </div>
-  ),
-});
-
-type MapPoint = {
-  id: string;
-  title: string;
-  locality: string;
-  city: string;
-  price: number;
-  href: string;
-  kind: ListingInventoryItem["kind"];
-  latitude: number;
-  longitude: number;
-};
 
 const trustHighlights = [
   {
@@ -53,8 +29,6 @@ const trustHighlights = [
 export function HomeJourney() {
   const [listings, setListings] = useState<ListingInventoryItem[]>([]);
   const [bookingCount, setBookingCount] = useState(0);
-  const [mapPoints, setMapPoints] = useState<MapPoint[]>([]);
-  const [mapStatus, setMapStatus] = useState("Map points are loaded from stored listings.");
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -65,72 +39,6 @@ export function HomeJourney() {
 
     return () => window.clearTimeout(handle);
   }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    async function hydrateMapPoints() {
-      if (listings.length === 0) {
-        setMapPoints([]);
-        setMapStatus("No listings yet. Publish a property to activate discovery.");
-        return;
-      }
-
-      const geocoded = await Promise.all(
-        listings.slice(0, 14).map(async (listing) => {
-          if (typeof listing.latitude === "number" && typeof listing.longitude === "number") {
-            return {
-              id: listing.id,
-              title: listing.title,
-              locality: listing.locality,
-              city: listing.city,
-              price: listing.price,
-              href: `/listings/${listing.slug}`,
-              kind: listing.kind,
-              latitude: listing.latitude,
-              longitude: listing.longitude,
-            } satisfies MapPoint;
-          }
-
-          const result = await geocodeListing(listing);
-
-          if (!result) {
-            return null;
-          }
-
-          return {
-            id: listing.id,
-            title: listing.title,
-            locality: listing.locality,
-            city: listing.city,
-            price: listing.price,
-            href: `/listings/${listing.slug}`,
-            kind: listing.kind,
-            latitude: result.lat,
-            longitude: result.lng,
-          } satisfies MapPoint;
-        }),
-      );
-
-      if (!active) {
-        return;
-      }
-
-      const resolved = geocoded.flatMap((point) => (point ? [point] : []));
-      setMapPoints(resolved);
-      setMapStatus(
-        resolved.length > 0
-          ? `${resolved.length} listing locations are live on the map.`
-          : "Listings are available, but map locations could not be resolved right now.",
-      );
-    }
-
-    void hydrateMapPoints();
-
-    return () => {
-      active = false;
-    };
-  }, [listings]);
 
   const verifiedCount = useMemo(() => listings.filter((listing) => listing.verified).length, [listings]);
   const cityCount = useMemo(() => new Set(listings.map((listing) => listing.city)).size, [listings]);
@@ -150,7 +58,7 @@ export function HomeJourney() {
               Discover verified stays, compare with confidence, and move in faster.
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-slate-200 sm:text-lg">
-              Start with trust markers, flow into map discovery, validate real marketplace proof, compare larger listing cards, and finish with clear booking or hosting actions.
+              Start with trust markers, flow into city and locality discovery, validate real marketplace proof, compare larger listing cards, and finish with clear booking or hosting actions.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Button asChild size="lg" className="h-12 px-6">
@@ -163,7 +71,7 @@ export function HomeJourney() {
                 <Link href="/host/listings/new">List your property</Link>
               </Button>
               <Button asChild size="lg" variant="ghost" className="h-12 px-5">
-                <Link href="/map">Explore map first</Link>
+                <Link href="/search">Explore verified stays</Link>
               </Button>
             </div>
           </div>
@@ -197,29 +105,6 @@ export function HomeJourney() {
             </Card>
           );
         })}
-      </section>
-
-      <section className="rounded-[2rem] border border-[color:var(--border)] bg-[color:var(--surface)] p-4 sm:p-5 lg:p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-800 dark:text-teal-300">Discovery</p>
-            <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50 sm:text-4xl">Map experience</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Scan where listings are concentrated, then drill into details.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Badge className="gap-2 bg-[color:var(--surface-strong)] text-slate-700 dark:text-slate-200">
-              <Compass className="h-3.5 w-3.5" /> Live map points
-            </Badge>
-            <Badge className="gap-2 bg-[color:var(--surface-strong)] text-slate-700 dark:text-slate-200">
-              <MapPinned className="h-3.5 w-3.5" /> Locality-first
-            </Badge>
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-[2rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-2">
-          <LeafletMap points={mapPoints} searchPoint={null} />
-        </div>
-        <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{mapStatus}</p>
       </section>
 
       <section className="rounded-[2rem] border border-[color:var(--border)] bg-[color:var(--surface)] p-5 sm:p-6">
@@ -271,7 +156,7 @@ export function HomeJourney() {
         <Card className="border-[color:var(--border)] bg-[linear-gradient(140deg,rgba(15,118,110,0.14),rgba(255,255,255,0.98))] p-6 dark:bg-[linear-gradient(140deg,rgba(20,184,166,0.18),rgba(15,23,42,0.95))] sm:p-7">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-900 dark:text-teal-200">Conversion</p>
           <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50">Ready to move in?</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-200">Use search filters and map view to shortlist a stay, then proceed to booking with clear pricing and availability context.</p>
+          <p className="mt-3 text-sm leading-7 text-slate-700 dark:text-slate-200">Use search filters to shortlist a stay, then proceed to booking with clear pricing and availability context.</p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Button asChild size="lg" className="h-12 px-6">
               <Link href="/search">
@@ -279,16 +164,13 @@ export function HomeJourney() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="h-12 px-6">
-              <Link href="/map">Open map view</Link>
-            </Button>
           </div>
         </Card>
 
         <Card className="border-[color:var(--border)] bg-[color:var(--surface)] p-6 sm:p-7">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-800 dark:text-teal-300">For hosts</p>
           <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-slate-950 dark:text-slate-50">List your property and get discovered</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">Create a listing with location, amenities, and pricing. Approved inventory appears across search and map discovery.</p>
+          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">Create a listing with location, amenities, and pricing. Approved inventory appears across search and city discovery.</p>
           <div className="mt-5 grid gap-3">
             <Button asChild size="lg" className="h-12 justify-center">
               <Link href="/host/listings/new">Start listing now</Link>
@@ -299,6 +181,7 @@ export function HomeJourney() {
           </div>
         </Card>
       </section>
+
     </div>
   );
 }

@@ -1,4 +1,3 @@
-@import "leaflet/dist/leaflet.css";
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -93,9 +92,4 @@ button {
 	text-wrap: balance;
 }
 
-.leaflet-container {
-	min-height: 100%;
-	width: 100%;
-	font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
-	background: var(--surface-strong);
-}
+/* Map related styles have been removed in favor of Google Maps search links. */

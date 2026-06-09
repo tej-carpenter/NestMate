@@ -5,6 +5,7 @@ import type { ListingWizardInput } from "@/lib/validators/listing";
 import { buildListingThumbnail } from "@/lib/listing-thumbnail";
 import { getListingApprovalExpiry, isPublicListingStatus, normalizeListingStatus, normalizeModerationState, type ListingModerationState, type ListingStatus, listingReviewValidityMs } from "@/lib/listings/status";
 import { ensureVerificationRequest, getVerificationSummary, updateVerificationChecklist } from "@/lib/verification/requests";
+import { resolveGoogleMapsUrl } from "@/lib/google-maps";
 
 type ListingBaseRecord = {
   id: string;
@@ -14,6 +15,10 @@ type ListingBaseRecord = {
   title: string;
   city: string;
   locality: string;
+  address: string;
+  googleMapsUrl?: string;
+  // Legacy optional fields. Latitude/longitude are no longer required for
+  // listing creation; they are kept for backwards compatibility.
   latitude?: number;
   longitude?: number;
   genderPreference: "male" | "female" | "any";
@@ -459,6 +464,7 @@ function normalizeListingRecord(property: LegacyListingLike): ListingInventoryIt
   const title = property.title ?? "Untitled stay";
   const city = property.city ?? "Unknown city";
   const locality = property.locality ?? "Unknown locality";
+  const address = property.address && property.address.length > 0 ? property.address : `${locality}, ${city}`;
   const spaceType = property.spaceType ?? "pg";
   const kind = property.kind ?? inferListingKind({ spaceType });
   const users = getUsers();
@@ -497,6 +503,8 @@ function normalizeListingRecord(property: LegacyListingLike): ListingInventoryIt
     title,
     city,
     locality,
+    address,
+    googleMapsUrl: property.googleMapsUrl,
     latitude: property.latitude,
     longitude: property.longitude,
     genderPreference: property.genderPreference ?? "any",
@@ -1004,6 +1012,7 @@ export function createListingFromWizard(input: ListingWizardInput) {
   const hostUserPhone = localSession?.phone ?? currentActor.phone;
   const slugBase = toSlug(`${input.title}-${input.city}-${input.locality}`);
   const slug = listings.some((listing) => listing.slug === slugBase) ? `${slugBase}-${now.toString(36)}` : slugBase;
+  const explicitGoogleMapsUrl = typeof input.googleMapsUrl === "string" && input.googleMapsUrl.trim().length > 0 ? input.googleMapsUrl.trim() : null;
   const listing: ListingInventoryItem = {
     id: makeId("lst"),
     slug,
@@ -1012,6 +1021,8 @@ export function createListingFromWizard(input: ListingWizardInput) {
     title: input.title,
     city: input.city,
     locality: input.locality,
+    address: input.address,
+    googleMapsUrl: resolveGoogleMapsUrl({ title: input.title, locality: input.locality, city: input.city }, explicitGoogleMapsUrl),
     latitude: input.latitude,
     longitude: input.longitude,
     genderPreference: input.genderPreference,

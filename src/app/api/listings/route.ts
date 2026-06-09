@@ -14,6 +14,8 @@ const createSchema = z.object({
   description: z.string().trim().min(1).max(5000),
   city: z.string().trim().min(1).max(80),
   locality: z.string().trim().min(1).max(120),
+  address: z.string().trim().min(1).max(240),
+  googleMapsUrl: z.string().trim().max(2048).optional(),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
   spaceType: z.enum(["pg", "room", "bed", "lodge", "apartment"]),
@@ -45,6 +47,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Only users and admins can create listings." }, { status: 403 });
   }
 
+  const explicitGoogleMapsUrl = typeof parsed.data.googleMapsUrl === "string" && parsed.data.googleMapsUrl.trim().length > 0 ? parsed.data.googleMapsUrl.trim() : null;
+  const generatedGoogleMapsUrl =
+    explicitGoogleMapsUrl ??
+    `https://www.google.com/maps/search/${encodeURIComponent(`${parsed.data.title} ${parsed.data.locality} ${parsed.data.city}`)}`;
   const listing = await createListing(
     {
       host_id: parsed.data.hostId ?? parsed.data.actor.id,
@@ -52,6 +58,8 @@ export async function POST(request: Request) {
       description: parsed.data.description,
       city: parsed.data.city,
       locality: parsed.data.locality,
+      address: parsed.data.address,
+      google_maps_url: generatedGoogleMapsUrl,
       latitude: parsed.data.latitude ?? null,
       longitude: parsed.data.longitude ?? null,
       space_type: parsed.data.spaceType,

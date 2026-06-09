@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import React from "react";
-import { ArrowRight, BadgeCheck, Heart, MapPin, ShieldCheck, Sparkles, Star, SquareParking, UtensilsCrossed, Users, Wifi } from "lucide-react";
+import { ArrowRight, BadgeCheck, ExternalLink, Heart, MapPin, ShieldCheck, Sparkles, Star, SquareParking, UtensilsCrossed, Users, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import { cn } from "@/lib/cn";
 import { formatRupee } from "@/lib/format";
 import { buildListingThumbnail } from "@/lib/listing-thumbnail";
 import { formatPricePeriod } from "@/lib/pricing";
+import { resolveGoogleMapsUrl } from "@/lib/google-maps";
 import type { ListingInventoryItem } from "@/lib/local-data";
 import { canSaveListing } from "@/lib/auth/permissions";
 import { readLocalSession } from "@/lib/session";
@@ -104,6 +105,10 @@ function ListingCard({ listing, compact = false, className }: ListingCardProps) 
   const genderPreference = listing.genderPreference ?? "any";
   const hasResidentFeedback = reviewCount > 0;
   const canSave = canSaveListing(session);
+  const googleMapsUrl = useMemo(
+    () => resolveGoogleMapsUrl({ title: listing.title, locality: listing.locality, city: listing.city }, listing.googleMapsUrl),
+    [listing.title, listing.locality, listing.city, listing.googleMapsUrl],
+  );
 
   useEffect(() => {
     const refreshSession = () => setSession(readLocalSession());
@@ -246,6 +251,17 @@ function ListingCard({ listing, compact = false, className }: ListingCardProps) 
             </Button>
             <Button asChild variant="outline" className="w-full flex-1 justify-center">
               <Link href={`/listings/${listing.slug}`}>View details</Link>
+            </Button>
+            <Button
+              asChild
+              variant="ghost"
+              className="w-full flex-1 justify-center text-teal-800 hover:bg-teal-50 hover:text-teal-900 dark:text-teal-200 dark:hover:bg-teal-500/15 dark:hover:text-teal-50"
+            >
+              <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open ${listing.title} in Google Maps`}>
+                <MapPin className="h-4 w-4" />
+                Open in Maps
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
             </Button>
           </div>
         </div>

@@ -4,20 +4,15 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { ExternalLink, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { geocodeQuery } from "@/lib/nominatim";
+import { resolveGoogleMapsUrl } from "@/lib/google-maps";
 import { createListingFromWizard } from "@/lib/local-data";
 import { listingWizardSchema, type ListingWizardInput } from "@/lib/validators/listing";
 import { createListingDraftAction, publishListingAction } from "@/actions/listings";
-import dynamic from "next/dynamic";
-
-const LocationPickerMap = dynamic(() => import("@/components/map/location-picker-map").then((module) => module.LocationPickerMap), {
-  ssr: false,
-  loading: () => <div className="flex h-[clamp(16rem,34dvh,22rem)] items-center justify-center rounded-[1.75rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] text-sm text-[color:var(--muted)] sm:h-[clamp(18rem,30dvh,24rem)] lg:h-[24rem]">Loading location picker...</div>,
-});
 
 const defaultValues: ListingWizardInput = {
   propertyType: "pg",
@@ -25,10 +20,14 @@ const defaultValues: ListingWizardInput = {
   description: "",
   city: "",
   locality: "",
+  address: "",
+  googleMapsUrl: "",
   price: 0,
   priceType: "monthly",
   amenities: [],
   genderPreference: "any",
+  // Latitude/longitude are kept as legacy optional fields. They are not
+  // required and are no longer used in the wizard UI.
   latitude: undefined,
   longitude: undefined,
 };
@@ -48,7 +47,7 @@ const stepDefinitions = [
   },
   {
     title: "Address and location",
-    fields: ["city", "locality"] as const,
+    fields: ["city", "locality", "address"] as const,
   },
   {
     title: "Pricing",
@@ -99,7 +98,6 @@ export function ListingWizard() {
   const [stepIndex, setStepIndex] = useState(0);
   const [uploadFiles, setUploadFiles] = useState<Array<{ name: string; size: number; type: string }>>([]);
   const [status, setStatus] = useState<string | null>(null);
-  const [isResolvingLocation, setIsResolvingLocation] = useState(false);
   const [isPending, startTransition] = useTransition();
   const hasHydratedDraftRef = useRef(false);
 
@@ -111,46 +109,14 @@ export function ListingWizard() {
 
   const values = useWatch({ control, defaultValue: defaultValues });
   const amenities = values.amenities ?? [];
-  const selectedLocation = typeof values.latitude === "number" && typeof values.longitude === "number" ? { latitude: values.latitude, longitude: values.longitude } : null;
 
-  async function resolveLocation() {
-    const searchParts = [values.title, values.locality, values.city, "India"].filter((part): part is string => typeof part === "string" && part.trim().length > 0);
-
-    if (searchParts.length < 2) {
-      toast.error("Add at least a city and locality before picking a location.");
-      return;
-    }
-
-    setIsResolvingLocation(true);
-
-    try {
-      const result = await geocodeQuery(searchParts.join(", "));
-
-      if (!result) {
-        toast.error("Could not find that location.");
-        return;
-      }
-
-      setValue("latitude", result.lat, { shouldDirty: true, shouldValidate: true });
-      setValue("longitude", result.lng, { shouldDirty: true, shouldValidate: true });
-      setStatus(`Location picked for ${result.label}.`);
-      toast.success("Location picked.");
-    } finally {
-      setIsResolvingLocation(false);
-    }
-  }
-
-  function updateLocation(latitude: number, longitude: number) {
-    setValue("latitude", latitude, { shouldDirty: true, shouldValidate: true });
-    setValue("longitude", longitude, { shouldDirty: true, shouldValidate: true });
-    setStatus(`Pinned location at ${latitude.toFixed(5)}, ${longitude.toFixed(5)}.`);
-  }
-
-  function clearLocation() {
-    setValue("latitude", undefined, { shouldDirty: true, shouldValidate: true });
-    setValue("longitude", undefined, { shouldDirty: true, shouldValidate: true });
-    setStatus("Location cleared.");
-  }
+  const previewGoogleMapsUrl = useMemo(
+    () => resolveGoogleMapsUrl(
+      { title: values.title ?? "", locality: values.locality ?? "", city: values.city ?? "" },
+      typeof values.googleMapsUrl === "string" && values.googleMapsUrl.trim().length > 0 ? values.googleMapsUrl : null,
+    ),
+    [values.title, values.locality, values.city, values.googleMapsUrl],
+  );
 
   useEffect(() => {
     const draft = parseDraft();
@@ -304,32 +270,37 @@ export function ListingWizard() {
               <span className="text-sm font-medium text-[color:var(--foreground)]">Locality</span>
               <Input {...register("locality")} placeholder="BTM Layout" />
             </label>
+            <label className="space-y-2 md:col-span-2">
+              <span className="text-sm font-medium text-[color:var(--foreground)]">Address</span>
+              <Input {...register("address")} placeholder="Building / street / landmark" />
+            </label>
             <div className="md:col-span-2 space-y-3 overflow-hidden rounded-[1.75rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">Location picker</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Geocode the address, then click the map to fine-tune the pin.</p>
-                </div>
-                <div className="relative z-10 flex gap-2">
-                  {selectedLocation ? (
-                    <Button type="button" variant="outline" onClick={clearLocation}>
-                      Clear
-                    </Button>
-                  ) : null}
-                  <Button type="button" onClick={resolveLocation} disabled={isResolvingLocation}>
-                    {isResolvingLocation ? "Resolving..." : "Find on map"}
-                  </Button>
+                  <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">Google Maps link (optional)</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    Paste a Google Maps link to use the exact location. Otherwise, a search link is generated automatically from the title, locality, and city.
+                  </p>
                 </div>
               </div>
-              <LocationPickerMap
-                value={selectedLocation}
-                onPick={(point) => {
-                  updateLocation(point.latitude, point.longitude);
-                }}
+              <Input
+                {...register("googleMapsUrl")}
+                type="url"
+                placeholder="https://www.google.com/maps/search/..."
+                inputMode="url"
+                autoComplete="url"
               />
-              <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-                {selectedLocation ? `Picked ${values.latitude?.toFixed(5)}, ${values.longitude?.toFixed(5)}.` : "No coordinates selected yet."}
-              </p>
+              <div className="rounded-[1.25rem] bg-[color:var(--surface)] p-4 text-sm text-slate-700 dark:text-slate-200">
+                <p className="font-semibold text-slate-950 dark:text-slate-50">Preview link</p>
+                <p className="mt-1 break-all text-xs text-slate-500 dark:text-slate-400">{previewGoogleMapsUrl}</p>
+              </div>
+              <Button asChild type="button" variant="outline" className="w-full justify-center sm:w-auto">
+                <a href={previewGoogleMapsUrl} target="_blank" rel="noopener noreferrer">
+                  <MapPin className="h-4 w-4" />
+                  Open in Google Maps
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </Button>
             </div>
           </div>
         ) : null}
@@ -418,11 +389,11 @@ export function ListingWizard() {
             <dl className="grid gap-3 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
               <div>
                 <dt className="font-medium text-slate-950 dark:text-slate-50">Location</dt>
-                <dd>{[values.locality, values.city].filter(Boolean).join(", ") || "Location pending"}</dd>
+                <dd>{[values.address, values.locality, values.city].filter((part) => typeof part === "string" && part.trim().length > 0).join(", ") || "Location pending"}</dd>
               </div>
               <div>
-                <dt className="font-medium text-slate-950 dark:text-slate-50">Coordinates</dt>
-                <dd>{selectedLocation ? `${values.latitude?.toFixed(5)}, ${values.longitude?.toFixed(5)}` : "Not selected"}</dd>
+                <dt className="font-medium text-slate-950 dark:text-slate-50">Google Maps</dt>
+                <dd className="break-all text-xs">{previewGoogleMapsUrl}</dd>
               </div>
               <div>
                 <dt className="font-medium text-slate-950 dark:text-slate-50">Price</dt>

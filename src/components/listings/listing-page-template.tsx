@@ -1,12 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, CalendarDays, ChevronDown, Home, MapPin, ShieldCheck, Sparkles, Star, Users2 } from "lucide-react";
+import { BadgeCheck, CalendarDays, ChevronDown, ExternalLink, Home, MapPin, ShieldCheck, Sparkles, Star, Users2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatRupee } from "@/lib/format";
-import { PropertyMapPreview } from "@/components/listings/property-map-preview";
+import { resolveGoogleMapsUrl } from "@/lib/google-maps";
 import ReviewSection from "@/components/listings/review-section";
 import { HostProfileCard } from "@/components/host/host-profile-card";
 import { formatPricePeriod } from "@/lib/pricing";
@@ -106,6 +106,11 @@ export default function ListingPageTemplate({
   const relatedImage = heroImages[1] ?? listing;
   const canEditListing = canManageListing(listing, currentUser);
   const isBookable = isPublicListingStatus(listing.status, listing.moderationState);
+  const googleMapsUrl = resolveGoogleMapsUrl(
+    { title: listing.title, locality: listing.locality, city: listing.city },
+    listing.googleMapsUrl,
+  );
+  const locationAddress = listing.address && listing.address.trim().length > 0 ? listing.address : `${listing.locality}, ${listing.city}`;
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 pb-28 pt-4 sm:px-6 lg:px-8">
@@ -266,15 +271,15 @@ export default function ListingPageTemplate({
             <div className="mt-5 grid gap-5 lg:grid-cols-[1.08fr_0.92fr]">
               <div className="space-y-4 rounded-[1.75rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-5 sm:p-6">
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Locality information</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{listing.locality}, {listing.city}</p>
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Location information</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{locationAddress}</p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
+                    { label: "City", value: listing.city },
+                    { label: "Locality", value: listing.locality },
+                    { label: "Address", value: locationAddress },
                     { label: "Property type", value: listing.spaceType.toUpperCase() },
-                    { label: "Gender policy", value: listing.genderPreference === "any" ? "Any gender" : `${listing.genderPreference} only` },
-                    { label: "Verification", value: listing.verified ? "Verified stay" : "Verification in progress" },
-                    { label: "Inventory state", value: availabilityLabel },
                   ].map((item) => (
                     <div key={item.label} className="rounded-[1.25rem] bg-[color:var(--surface)] p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{item.label}</p>
@@ -284,7 +289,32 @@ export default function ListingPageTemplate({
                 </div>
               </div>
 
-              <PropertyMapPreview listing={listing} />
+              <div className="flex flex-col gap-4 rounded-[1.75rem] border border-[color:var(--border)] bg-[linear-gradient(180deg,rgba(15,118,110,0.10),rgba(248,250,252,0.99))] p-5 sm:p-6 dark:bg-[linear-gradient(180deg,rgba(15,118,110,0.18),rgba(15,23,42,0.92))]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Open in Google Maps</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      Use Google Maps to navigate to {listing.title}.
+                    </p>
+                  </div>
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-50 text-teal-900 dark:bg-teal-500/15 dark:text-teal-100">
+                    <MapPin className="h-4 w-4" />
+                  </div>
+                </div>
+                <div className="rounded-[1.25rem] bg-[color:var(--surface)] p-4 text-sm text-slate-700 dark:text-slate-200">
+                  {locationAddress}
+                </div>
+                <Button
+                  asChild
+                  className="w-full justify-center shadow-sm shadow-teal-900/10"
+                >
+                  <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
+                    <MapPin className="h-4 w-4" />
+                    Open in Google Maps
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </Button>
+              </div>
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
