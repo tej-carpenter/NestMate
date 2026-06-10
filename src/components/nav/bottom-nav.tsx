@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Home, Search, MapPinned, PlusCircle, UserRound, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { getAccountLabel, getPostLoginRoute, readLocalSession } from "@/lib/session";
+import { getAccountLabel, getPostLoginRoute, loadSupabaseSessionProfile, readLocalSession, subscribeToSupabaseAuth } from "@/lib/session";
 import { isAdminRole } from "@/lib/auth/roles";
 
 const baseItems = [
@@ -21,9 +21,16 @@ export function BottomNav() {
     const refreshSession = () => setSession(readLocalSession());
 
     refreshSession();
+    void loadSupabaseSessionProfile().then(setSession).catch(refreshSession);
+    const unsubscribe = subscribeToSupabaseAuth(setSession);
     window.addEventListener("storage", refreshSession);
+    window.addEventListener("nestmate-auth-change", refreshSession);
 
-    return () => window.removeEventListener("storage", refreshSession);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("storage", refreshSession);
+      window.removeEventListener("nestmate-auth-change", refreshSession);
+    };
   }, []);
 
   const items = useMemo(() => {

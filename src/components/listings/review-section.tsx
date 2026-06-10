@@ -4,7 +4,7 @@ import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { readLocalSession } from "@/lib/session";
+import { loadSupabaseSessionProfile, readLocalSession } from "@/lib/session";
 import { createReview, getReviews } from "@/lib/local-data";
 
 type Review = {
@@ -28,6 +28,7 @@ export default function ReviewSection({ listingId, listingSlug }: { listingId: s
   useEffect(() => {
     const handle = window.setTimeout(() => {
       setSession(readLocalSession());
+      void loadSupabaseSessionProfile().then(setSession).catch(() => setSession(readLocalSession()));
       setReviews(getReviews(listingId));
     }, 0);
 
@@ -42,7 +43,8 @@ export default function ReviewSection({ listingId, listingSlug }: { listingId: s
     }
 
     try {
-      const rec = createReview({ listingId, listingSlug, userPhone: session.phone, reviewerName: session.name || session.phone, rating, text });
+      const contact = session.phone || session.email;
+      const rec = createReview({ listingId, listingSlug, userPhone: contact, reviewerName: session.name || contact, rating, text });
       setReviews((s) => [rec, ...s]);
       setText("");
       setRating(5);

@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { canCreateListing, canModerateListings, isAuthenticatedSession, type AccessSession } from "@/lib/auth/permissions";
-import { readLocalSession } from "@/lib/session";
+import { loadSupabaseSessionProfile, readLocalSession, subscribeToSupabaseAuth } from "@/lib/session";
 
 type AccessVariant = "authenticated" | "creator" | "moderator";
 
@@ -41,10 +41,20 @@ export function RouteAccessGate({ variant, children, title, description, actionL
   useEffect(() => {
     const handle = window.setTimeout(() => {
       setSession(readLocalSession());
-      setMounted(true);
+      void loadSupabaseSessionProfile()
+        .then(setSession)
+        .catch(() => setSession(readLocalSession()))
+        .finally(() => setMounted(true));
     }, 0);
+    const unsubscribe = subscribeToSupabaseAuth((nextSession) => {
+      setSession(nextSession);
+      setMounted(true);
+    });
 
-    return () => window.clearTimeout(handle);
+    return () => {
+      window.clearTimeout(handle);
+      unsubscribe();
+    };
   }, []);
 
   const allowed = useMemo(() => isAllowed(variant, session), [session, variant]);

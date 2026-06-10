@@ -1,10 +1,10 @@
-import { EmailLoginForm } from "@/components/auth/email-login-form";
+import { SignupForm } from "@/components/auth/signup-form";
 import { PageShell } from "@/components/layout/page-shell";
 
-export default function LoginPage() {
+export default function SignupPage() {
   return (
     <PageShell className="justify-center gap-8">
-      <EmailLoginForm />
+      <SignupForm />
     </PageShell>
   );
 }

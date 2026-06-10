@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { HostContactChannel, PublicHostProfile } from "@/lib/local-data";
 import { canContactOwner } from "@/lib/auth/permissions";
-import { readLocalSession } from "@/lib/session";
+import { loadSupabaseSessionProfile, readLocalSession } from "@/lib/session";
 import { useEffect, useState } from "react";
 
 function formatJoinedDate(value: number) {
@@ -54,6 +54,7 @@ export function HostProfileCard({
   useEffect(() => {
     const handle = window.setTimeout(() => {
       setSession(readLocalSession());
+      void loadSupabaseSessionProfile().then(setSession).catch(() => setSession(readLocalSession()));
       setMounted(true);
     }, 0);
 

@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatRupee } from "@/lib/format";
 import { getBookings, getPaymentForBooking } from "@/lib/local-data";
-import { readLocalSession } from "@/lib/session";
+import { loadSupabaseSessionProfile, readLocalSession } from "@/lib/session";
 import { isAuthenticatedSession } from "@/lib/auth/permissions";
 
 export default function GuestBookingsPage() {
@@ -17,6 +17,7 @@ export default function GuestBookingsPage() {
   useEffect(() => {
     const handle = window.setTimeout(() => {
       setSession(readLocalSession());
+      void loadSupabaseSessionProfile().then(setSession).catch(() => setSession(readLocalSession()));
       setMounted(true);
     }, 0);
 
@@ -54,7 +55,7 @@ export default function GuestBookingsPage() {
     );
   }
 
-  const bookings = session ? getBookings(session.phone) : [];
+  const bookings = session ? getBookings(session.phone || session.email) : [];
   const confirmedCount = bookings.filter((booking) => booking.status === "confirmed").length;
 
   return (

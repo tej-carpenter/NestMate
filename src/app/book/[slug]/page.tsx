@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { formatRupee } from "@/lib/format";
 import { createBooking, createPaymentForBooking, getListingBySlug } from "@/lib/local-data";
 import { formatPricePeriod } from "@/lib/pricing";
-import { readLocalSession } from "@/lib/session";
+import { loadSupabaseSessionProfile, readLocalSession } from "@/lib/session";
 import { isAuthenticatedSession } from "@/lib/auth/permissions";
 
 export default function BookingPage({ params }: { params: Promise<{ slug: string }> | { slug: string } }) {
@@ -31,6 +31,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
   useEffect(() => {
     const handle = window.setTimeout(() => {
       setSession(readLocalSession());
+      void loadSupabaseSessionProfile().then(setSession).catch(() => setSession(readLocalSession()));
       setListing(getListingBySlug(resolvedParams.slug));
       setMounted(true);
     }, 0);
@@ -67,6 +68,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
 
   const selectedListing = listing;
   const isAuthenticated = isAuthenticatedSession(session);
+  const userContact = session?.phone || session?.email || "";
   const hasResidentFeedback = (selectedListing.reviewCount ?? 0) > 0;
   const hasAvailabilityData = selectedListing.totalUnits > 0 && selectedListing.availableUnits > 0;
 
@@ -88,7 +90,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
 
     try {
       const booking = createBooking({
-        userPhone: session.phone,
+        userPhone: userContact,
         listingSlug: selectedListing.slug,
         quantity,
         checkInDate,
@@ -99,7 +101,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
 
       const payment = createPaymentForBooking({
         bookingId: booking.id,
-        userPhone: session.phone,
+        userPhone: userContact,
         amount: booking.amount,
       });
 

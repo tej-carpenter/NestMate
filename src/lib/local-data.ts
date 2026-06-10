@@ -58,6 +58,7 @@ export interface PersistedUser {
 export interface LoginEvent {
   id: string;
   userPhone: string;
+  userEmail?: string | null;
   role: AppAccessRole;
   at: number;
 }
@@ -410,7 +411,7 @@ export function getCurrentSessionUser(): ListingActor | null {
   }
 
   const users = getUsers();
-  return users.find((user) => user.id === session.userId) ?? users.find((user) => user.phone === session.phone) ?? null;
+  return users.find((user) => user.id === session.userId) ?? users.find((user) => user.email === session.email) ?? users.find((user) => user.phone === session.phone) ?? null;
 }
 
 export function canManageListing(listing: ListingInventoryItem, actor: ListingActor | null = getCurrentSessionUser()) {
@@ -1009,7 +1010,7 @@ export function createListingFromWizard(input: ListingWizardInput) {
 
   const currentActor = actor;
   const localSession = readLocalSession();
-  const hostUserPhone = localSession?.phone ?? currentActor.phone;
+  const hostUserPhone = localSession?.phone || localSession?.email || currentActor.phone;
   const slugBase = toSlug(`${input.title}-${input.city}-${input.locality}`);
   const slug = listings.some((listing) => listing.slug === slugBase) ? `${slugBase}-${now.toString(36)}` : slugBase;
   const explicitGoogleMapsUrl = typeof input.googleMapsUrl === "string" && input.googleMapsUrl.trim().length > 0 ? input.googleMapsUrl.trim() : null;
@@ -1072,29 +1073,33 @@ export function createListingFromWizard(input: ListingWizardInput) {
   return listing;
 }
 
-export function upsertUserOnLogin(input: { phone: string; name: string; role: AppAccessRole; email?: string | null; authMethod?: "phone" | "email" }) {
+export function upsertUserOnLogin(input: { id?: string; phone?: string | null; name: string; role: AppAccessRole; email: string }) {
   const users = getUsers();
   const now = Date.now();
-  const existing = users.find((user) => user.phone === input.phone);
+  const phone = input.phone?.trim() || "";
+  const email = input.email.trim().toLowerCase();
+  const contactKey = phone || email;
+  const existing = users.find((user) => user.id === input.id || user.email === email || (phone && user.phone === phone));
   const nextRole = normalizeRole(input.role) ?? input.role;
 
   if (existing) {
+    existing.id = input.id ?? existing.id;
     existing.name = input.name || existing.name;
     existing.role = nextRole;
-    existing.email = input.email ?? existing.email ?? null;
-    existing.phoneVerifiedAt = input.authMethod === "phone" ? now : existing.phoneVerifiedAt;
-    existing.emailVerifiedAt = input.authMethod === "email" ? now : existing.emailVerifiedAt;
+    existing.email = email;
+    existing.phone = contactKey;
+    existing.emailVerifiedAt = now;
     existing.lastLoginAt = now;
     existing.loginCount += 1;
   } else {
     users.push({
-      id: makeId("usr"),
-      phone: input.phone,
+      id: input.id ?? makeId("usr"),
+      phone: contactKey,
       name: input.name || "Nestmate user",
-      email: input.email ?? null,
+      email,
       role: nextRole,
-      phoneVerifiedAt: input.authMethod === "phone" ? now : null,
-      emailVerifiedAt: input.authMethod === "email" ? now : null,
+      phoneVerifiedAt: null,
+      emailVerifiedAt: now,
       createdAt: now,
       lastLoginAt: now,
       loginCount: 1,
@@ -1103,7 +1108,7 @@ export function upsertUserOnLogin(input: { phone: string; name: string; role: Ap
 
   writeList(storageKeys.users, users);
 
-  const currentUser = users.find((user) => user.phone === input.phone) ?? null;
+  const currentUser = users.find((user) => user.id === input.id || user.email === email || user.phone === contactKey) ?? null;
   if (currentUser) {
     const contactRequest = ensureVerificationRequest({
       subjectType: "user",
@@ -1113,14 +1118,13 @@ export function upsertUserOnLogin(input: { phone: string; name: string; role: Ap
       requesterUserId: currentUser.id,
       requesterPhone: currentUser.phone,
       checklist: {
-        phone_otp_verified: Boolean(currentUser.phoneVerifiedAt),
         email_verified: Boolean(currentUser.emailVerifiedAt),
       },
     });
 
     updateVerificationChecklist({
       requestId: contactRequest.id,
-      checklistItemKey: input.authMethod === "email" ? "email_verified" : "phone_otp_verified",
+      checklistItemKey: "email_verified",
       completed: true,
     });
   }
@@ -1137,7 +1141,8 @@ export function upsertUserOnLogin(input: { phone: string; name: string; role: Ap
   const events = readList<LoginEvent>(storageKeys.loginEvents, []);
   events.unshift({
     id: makeId("lgn"),
-    userPhone: input.phone,
+    userPhone: contactKey,
+    userEmail: email,
     role: nextRole,
     at: now,
   });
@@ -1150,6 +1155,7 @@ export function getUsers() {
   const users = readList<PersistedUser>(storageKeys.users, []);
   const normalized = users.map((user) => ({
     ...user,
+    phone: typeof user.phone === "string" ? user.phone : user.email ?? "",
     role: normalizeRole(user.role) ?? "user",
     email: typeof user.email === "string" ? user.email : null,
     phoneVerifiedAt: typeof user.phoneVerifiedAt === "number" ? user.phoneVerifiedAt : null,
@@ -1197,7 +1203,7 @@ export function createBooking(input: {
 }) {
   // Prevent guests from creating bookings
   const users = getUsers();
-  const user = users.find((u) => u.phone === input.userPhone);
+  const user = users.find((u) => u.phone === input.userPhone || u.email === input.userPhone);
   if (!isAuthenticatedSession(user)) {
     throw new Error("Please sign in to create bookings.");
   }
@@ -1438,7 +1444,7 @@ export function getPaymentById(id: string) {
 export function createPaymentForBooking(input: { bookingId: string; userPhone: string; amount: number }) {
   // Prevent guests from creating payments (extra safety)
   const users = getUsers();
-  const user = users.find((u) => u.phone === input.userPhone);
+  const user = users.find((u) => u.phone === input.userPhone || u.email === input.userPhone);
   if (!isAuthenticatedSession(user)) {
     throw new Error("Please sign in to create payments.");
   }

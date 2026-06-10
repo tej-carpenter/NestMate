@@ -2,7 +2,7 @@ export type UserRole = "user" | "admin";
 
 export interface UserRecord {
   id: string;
-  phone: string;
+  phone: string | null;
   name: string | null;
   email: string | null;
   role: UserRole;

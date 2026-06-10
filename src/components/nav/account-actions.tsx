@@ -5,7 +5,7 @@ import Link from "next/link";
 import { UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { clearLocalSession, getAccountLabel, getPostLoginRoute, readLocalSession } from "@/lib/session";
+import { getAccountLabel, getPostLoginRoute, loadSupabaseSessionProfile, readLocalSession, signOutSession, subscribeToSupabaseAuth } from "@/lib/session";
 import { isAdminRole } from "@/lib/auth/roles";
 
 export function AccountActions() {
@@ -14,12 +14,19 @@ export function AccountActions() {
   React.useEffect(() => {
     const refreshSession = () => setSession(readLocalSession());
 
-    const frame = window.requestAnimationFrame(refreshSession);
+    const frame = window.requestAnimationFrame(() => {
+      refreshSession();
+      void loadSupabaseSessionProfile().then(setSession).catch(refreshSession);
+    });
+    const unsubscribe = subscribeToSupabaseAuth(setSession);
     window.addEventListener("storage", refreshSession);
+    window.addEventListener("nestmate-auth-change", refreshSession);
 
     return () => {
       window.cancelAnimationFrame(frame);
+      unsubscribe();
       window.removeEventListener("storage", refreshSession);
+      window.removeEventListener("nestmate-auth-change", refreshSession);
     };
   }, []);
 
@@ -44,8 +51,8 @@ export function AccountActions() {
             variant="outline"
             size="sm"
             className="hidden sm:inline-flex"
-            onClick={() => {
-              clearLocalSession();
+            onClick={async () => {
+              await signOutSession();
               setSession(null);
             }}
           >
@@ -58,7 +65,7 @@ export function AccountActions() {
         </Button>
       )}
 
-      <Button asChild size="sm" className="px-3 sm:px-4" disabled={!!session && !session.phone}>
+      <Button asChild size="sm" className="px-3 sm:px-4">
         <Link href="/host/listings/new">
           <span className="sm:hidden">List</span>
           <span className="hidden sm:inline">{isAdminRole(session?.role ?? "user") ? "Moderate listings" : "List a property"}</span>

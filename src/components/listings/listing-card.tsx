@@ -18,7 +18,7 @@ import { formatPricePeriod } from "@/lib/pricing";
 import { resolveGoogleMapsUrl } from "@/lib/google-maps";
 import type { ListingInventoryItem } from "@/lib/local-data";
 import { canSaveListing } from "@/lib/auth/permissions";
-import { readLocalSession } from "@/lib/session";
+import { loadSupabaseSessionProfile, readLocalSession } from "@/lib/session";
 import { isPublicListingStatus } from "@/lib/listings/status";
 
 type ListingCardProps = {
@@ -114,9 +114,14 @@ function ListingCard({ listing, compact = false, className }: ListingCardProps) 
     const refreshSession = () => setSession(readLocalSession());
 
     refreshSession();
+    void loadSupabaseSessionProfile().then(setSession).catch(refreshSession);
     window.addEventListener("storage", refreshSession);
+    window.addEventListener("nestmate-auth-change", refreshSession);
 
-    return () => window.removeEventListener("storage", refreshSession);
+    return () => {
+      window.removeEventListener("storage", refreshSession);
+      window.removeEventListener("nestmate-auth-change", refreshSession);
+    };
   }, []);
 
   return (

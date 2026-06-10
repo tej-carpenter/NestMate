@@ -29,12 +29,11 @@ export const verificationLevelDefinitions: Record<VerificationLevel, Verificatio
   contact: {
     level: "contact",
     title: "Verified Contact",
-    description: "Phone OTP and email verification are both required before the account is trusted for higher-risk actions.",
+    description: "Email verification is required before the account is trusted for higher-risk actions.",
     subjectType: "user",
     approvalMode: "system",
     badgeLabel: "Contact",
     checklist: [
-      { key: "phone_otp_verified", label: "Phone OTP verified" },
       { key: "email_verified", label: "Email verified" },
     ],
   },

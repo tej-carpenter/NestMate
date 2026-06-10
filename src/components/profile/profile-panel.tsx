@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/format";
 import { getBookings, getLoginEvents, getPayments, getUsers } from "@/lib/local-data";
-import { clearLocalSession, getAccountLabel, getPostLoginRoute, readLocalSession } from "@/lib/session";
+import { getAccountLabel, getPostLoginRoute, loadSupabaseSessionProfile, readLocalSession, signOutSession, subscribeToSupabaseAuth } from "@/lib/session";
 import { isAuthenticatedSession } from "@/lib/auth/permissions";
 
 export function ProfilePanel() {
@@ -22,13 +22,18 @@ export function ProfilePanel() {
     const handle = window.setTimeout(() => {
       setMounted(true);
       refreshSession();
+      void loadSupabaseSessionProfile().then(setSession).catch(refreshSession);
     }, 0);
 
+    const unsubscribe = subscribeToSupabaseAuth(setSession);
     window.addEventListener("storage", refreshSession);
+    window.addEventListener("nestmate-auth-change", refreshSession);
 
     return () => {
       window.clearTimeout(handle);
+      unsubscribe();
       window.removeEventListener("storage", refreshSession);
+      window.removeEventListener("nestmate-auth-change", refreshSession);
     };
   }, []);
 
@@ -81,10 +86,11 @@ export function ProfilePanel() {
     );
   }
 
-  const user = getUsers().find((item) => item.phone === session.phone);
-  const bookings = getBookings(session.phone);
-  const payments = getPayments(session.phone);
-  const loginEvents = getLoginEvents().filter((event) => event.userPhone === session.phone).slice(0, 4);
+  const userContact = session.phone || session.email;
+  const user = getUsers().find((item) => item.id === session.userId || item.email === session.email || item.phone === userContact);
+  const bookings = getBookings(userContact);
+  const payments = getPayments(userContact);
+  const loginEvents = getLoginEvents().filter((event) => event.userEmail === session.email || event.userPhone === userContact).slice(0, 4);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.22fr_0.78fr] lg:items-start">
@@ -114,7 +120,7 @@ export function ProfilePanel() {
               <Phone className="h-4 w-4 text-teal-700 dark:text-teal-300" />
               Phone
             </div>
-            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{session.phone}</p>
+            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{session.phone || "Not added"}</p>
           </div>
           <div className="min-h-32 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
             <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -186,12 +192,12 @@ export function ProfilePanel() {
           </Button>
           <Button
             variant="outline"
-            onClick={() => {
-              clearLocalSession();
+            onClick={async () => {
+              await signOutSession();
               setSession(null);
             }}
           >
-            Clear session
+            Sign out
           </Button>
         </div>
         <div className="mt-8 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4">

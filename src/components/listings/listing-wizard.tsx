@@ -18,13 +18,13 @@ const defaultValues: ListingWizardInput = {
   propertyType: "pg",
   title: "",
   description: "",
-  city: "",
+  city: "indore",
   locality: "",
   address: "",
   googleMapsUrl: "",
-  price: 0,
+  price: 10000,
   priceType: "monthly",
-  amenities: [],
+  amenities: [""],
   genderPreference: "any",
   // Latitude/longitude are kept as legacy optional fields. They are not
   // required and are no longer used in the wizard UI.
