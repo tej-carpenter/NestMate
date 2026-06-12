@@ -60,7 +60,8 @@ export function SignupForm() {
       });
 
       if (error) {
-        throw new Error(error.message);
+        console.error("SIGNUP ERROR", error);
+        throw error;
       }
 
       if (!data.user?.id || !data.user.email) {
@@ -90,9 +91,15 @@ export function SignupForm() {
       }
 
       setStatus("Account created. Check your email to confirm your account before logging in.");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Unable to create account.");
-    } finally {
+      } catch (error) {
+        console.error("FULL ERROR", error);
+
+        setStatus(
+          error instanceof Error
+            ? error.message
+            : JSON.stringify(error)
+        );
+      } finally {
       setIsSubmitting(false);
     }
   }
