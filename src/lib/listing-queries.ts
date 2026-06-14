@@ -16,7 +16,7 @@ export async function getActiveListings() {
     throw new Error(error.message);
   }
 
-  return (data ?? []).map((row) => {
+  return (data ?? []).map((row: any) => {
     const spaceType =
       row.space_type === "room"
         ? "room"

@@ -36,12 +36,23 @@ declare module "@supabase/ssr" {
     };
   }
 
-  export interface SupabaseQueryBuilder<T = Record<string, unknown>> {
+  export interface SupabaseQueryBuilder<T = Record<string, unknown>>
+    extends PromiseLike<{ data: T[] | null; error: SupabaseError }> {
+
     select(columns?: string): SupabaseQueryBuilder<T>;
+
     eq(column: string, value: unknown): SupabaseQueryBuilder<T>;
+
     maybeSingle(): QueryResponse<T>;
-    upsert(value: Record<string, unknown> | Record<string, unknown>[], options?: { onConflict?: string }): QueryResponse<T>;
-    insert(value: Record<string, unknown> | Record<string, unknown>[]): QueryResponse<T>;
+
+    upsert(
+      value: Record<string, unknown> | Record<string, unknown>[],
+      options?: { onConflict?: string }
+    ): QueryResponse<T>;
+
+    insert(
+      value: Record<string, unknown> | Record<string, unknown>[]
+    ): QueryResponse<T>;
   }
 
   export interface SupabaseClientLike {

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getActiveListings } from "@/lib/listing-queries";
 import { ListingCard } from "@/components/listings/listing-card";
+import type { ListingInventoryItem } from "@/lib/local-data";
 
 const quickChips = ["Verified only", "Under 15k", "Near metro", "Food included", "Female-friendly", "Move-in ready"];
 

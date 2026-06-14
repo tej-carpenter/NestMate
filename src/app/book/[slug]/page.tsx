@@ -8,7 +8,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatRupee } from "@/lib/format";
-import { createBooking, createPaymentForBooking, getListingBySlug } from "@/lib/local-data";
+import { createBooking, createPaymentForBooking } from "@/lib/local-data";
+import { getListingBySlug } from "@/lib/local-data";
 import { formatPricePeriod } from "@/lib/pricing";
 import { loadSupabaseSessionProfile, readLocalSession } from "@/lib/session";
 import { isAuthenticatedSession } from "@/lib/auth/permissions";
@@ -99,11 +100,15 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
         notes,
       });
 
+      console.log("BOOKING CREATED", booking);
+
       const payment = createPaymentForBooking({
         bookingId: booking.id,
         userPhone: userContact,
         amount: booking.amount,
       });
+
+      console.log("PAYMENT CREATED", payment);
 
       setStatus("Booking created. Redirecting to payment...");
       router.push(`/payment/${payment.id}`);
