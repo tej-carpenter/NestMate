@@ -2,7 +2,7 @@ type ListingThumbnailSource = {
   title: string;
   city: string;
   locality: string;
-  spaceType: "pg" | "room" | "bed" | "lodge" | "apartment";
+  spaceType: "pg" | "hostel" | "hotel" | "room" | "bed" | "lodge" | "apartment";
   verified: boolean;
   nestscore: number;
   status: "draft" | "pending_review" | "approved" | "rejected" | "expired" | "archived";
@@ -39,7 +39,7 @@ export function buildListingThumbnail(source: ListingThumbnailSource) {
   const hasFeedback = (source.reviewCount ?? 0) > 0 && source.nestscore > 0;
   const score = hasFeedback ? source.nestscore.toFixed(1) : "New";
   const scoreLabel = hasFeedback ? "NestScore" : "Awaiting feedback";
-  const label = source.spaceType.toUpperCase();
+  const label = (source.spaceType ?? "pg").toUpperCase();
   const statusLabels: Record<ListingThumbnailSource["status"], string> = {
     draft: "Draft",
     pending_review: "Pending review",

@@ -24,7 +24,7 @@ type ListingBaseRecord = {
   genderPreference: "male" | "female" | "any";
   price: number;
   priceType: "monthly" | "daily" | "bedspace";
-  spaceType: "pg" | "room" | "bed" | "lodge" | "apartment";
+  spaceType: "pg" | "hostel" | "hotel" | "room" | "bed" | "lodge" | "apartment";
   nestscore: number;
   verified: boolean;
   reviewCount: number;

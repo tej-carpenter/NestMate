@@ -41,6 +41,7 @@ declare module "@supabase/ssr" {
     eq(column: string, value: unknown): SupabaseQueryBuilder<T>;
     maybeSingle(): QueryResponse<T>;
     upsert(value: Record<string, unknown> | Record<string, unknown>[], options?: { onConflict?: string }): QueryResponse<T>;
+    insert(value: Record<string, unknown> | Record<string, unknown>[]): QueryResponse<T>;
   }
 
   export interface SupabaseClientLike {

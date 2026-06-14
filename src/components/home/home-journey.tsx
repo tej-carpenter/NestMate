@@ -6,7 +6,7 @@ import { ArrowRight, BadgeCheck, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ListingCard } from "@/components/listings/listing-card";
-import { getBookings, getPublicListingInventory, type ListingInventoryItem } from "@/lib/local-data";
+import { getActiveListings } from "@/lib/listing-queries";
 
 const trustHighlights = [
   {
@@ -32,9 +32,12 @@ export function HomeJourney() {
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
-      const inventory = getPublicListingInventory();
-      setListings(inventory);
-      setBookingCount(getBookings().length);
+      getActiveListings()
+        .then((inventory) => {
+          setListings(inventory as ListingInventoryItem[]);
+        })
+        .catch(console.error);
+      setBookingCount(0);
     }, 0);
 
     return () => window.clearTimeout(handle);

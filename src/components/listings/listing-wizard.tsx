@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { resolveGoogleMapsUrl } from "@/lib/google-maps";
-import { createListingFromWizard } from "@/lib/local-data";
+import { createListing } from "@/lib/listings";
+import { readLocalSession } from "@/lib/session";
 import { listingWizardSchema, type ListingWizardInput } from "@/lib/validators/listing";
 import { createListingDraftAction, publishListingAction } from "@/actions/listings";
 
@@ -21,7 +22,7 @@ const defaultValues: ListingWizardInput = {
   city: "indore",
   locality: "",
   address: "",
-  googleMapsUrl: "",
+  googleMapsUrl: "https://www.google.com/maps/search/",
   price: 10000,
   priceType: "monthly",
   amenities: [""],
@@ -202,13 +203,31 @@ export function ListingWizard() {
         return;
       }
 
-      const listing = createListingFromWizard(result.listing);
+      const session = readLocalSession();
+
+      if (!session) {
+        throw new Error("You must be logged in.");
+      }
+
+      await createListing({
+        host_id: session.userId,
+        title: result.listing.title,
+        description: result.listing.description,
+        city: result.listing.city,
+        locality: result.listing.locality,
+        address: result.listing.address,
+        space_type: result.listing.propertyType,
+        price: result.listing.price,
+        price_type: result.listing.priceType,
+        amenities: result.listing.amenities,
+        gender_preference: result.listing.genderPreference,
+      });
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(draftStorageKey);
       }
 
-      setStatus(`Submitted ${listing.title} for review. It will go live after approval.`);
-      toast.success(`Submitted ${listing.title} for review.`);
+      setStatus(`Listing created successfully. It will go live after approval.`);
+      toast.success(`Listing created successfully.`);
     });
   }
 

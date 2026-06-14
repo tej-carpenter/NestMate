@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { getPublicListingInventory, type ListingInventoryItem } from "@/lib/local-data";
+import { getActiveListings } from "@/lib/listing-queries";
 import { ListingCard } from "@/components/listings/listing-card";
 
 const quickChips = ["Verified only", "Under 15k", "Near metro", "Food included", "Female-friendly", "Move-in ready"];
@@ -15,8 +15,15 @@ export function SearchResultsShell({ querySummary }: { querySummary: string }) {
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
-      setListings(getPublicListingInventory());
-      setMounted(true);
+      getActiveListings()
+        .then((data) => {
+          setListings(data as ListingInventoryItem[]);
+          setMounted(true);
+        })
+        .catch((error) => {
+          console.error(error);
+          setMounted(true);
+        });
     }, 0);
 
     return () => window.clearTimeout(handle);
@@ -67,7 +74,7 @@ export function SearchResultsShell({ querySummary }: { querySummary: string }) {
                   <h2 className="mt-4 max-w-2xl font-[family-name:var(--font-display)] text-3xl leading-tight text-slate-950 dark:text-slate-50 sm:text-4xl">{querySummary}</h2>
                 </div>
                 <div className="rounded-[1.35rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm leading-6 text-slate-600 dark:text-slate-300 sm:max-w-sm">
-                    Results stay compact by default. Open any listing to view real availability and feedback status.
+                  Results stay compact by default. Open any listing to view real availability and feedback status.
                 </div>
               </div>
 
