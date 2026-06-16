@@ -21,6 +21,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.542.0",
     "next": "^16.2.6",
+    "razorpay": "^2.9.6",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-hook-form": "^7.63.0",

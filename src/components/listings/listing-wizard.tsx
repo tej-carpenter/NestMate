@@ -29,7 +29,6 @@ const defaultValues: ListingWizardInput = {
   genderPreference: "any",
   availableUnits: 1,
   expiresInDays: "30",
-  upiQrUrl: "",
   // Latitude/longitude are kept as legacy optional fields. They are not
   // required and are no longer used in the wizard UI.
   latitude: undefined,
@@ -55,7 +54,7 @@ const stepDefinitions = [
   },
   {
     title: "Pricing & Payment",
-    fields: ["price", "priceType", "upiQrUrl"] as const,
+    fields: ["price", "priceType"] as const,
   },
   {
     title: "Availability",
@@ -228,7 +227,6 @@ export function ListingWizard() {
         price_type: result.listing.priceType,
         amenities: result.listing.amenities,
         gender_preference: result.listing.genderPreference,
-        upi_qr_url: result.listing.upiQrUrl,
         available_units: result.listing.availableUnits,
         expires_in_days: result.listing.expiresInDays,
       });
@@ -356,43 +354,6 @@ export function ListingWizard() {
                 <option value="bedspace">Bed space</option>
               </select>
             </label>
-            <div className="md:col-span-2 space-y-2">
-              <span className="text-sm font-medium text-[color:var(--foreground)]">UPI QR Code (Optional)</span>
-              <p className="text-xs text-slate-500">Upload your UPI QR code so guests can scan and pay easily. Uses Cloudinary.</p>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={async (event) => {
-                  const file = event.target.files?.[0];
-                  if (!file) return;
-                  setStatus("Uploading QR code to Cloudinary...");
-                  try {
-                    const formData = new FormData();
-                    formData.append("file", file);
-                    formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "");
-                    
-                    const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
-                      method: "POST",
-                      body: formData,
-                    });
-                    const data = await res.json();
-                    if (data.secure_url) {
-                      setValue("upiQrUrl", data.secure_url, { shouldValidate: true });
-                      setStatus("QR code uploaded successfully!");
-                    } else {
-                      setStatus("Failed to upload QR code.");
-                    }
-                  } catch (err) {
-                    setStatus("Error uploading image.");
-                  }
-                }}
-              />
-              {values.upiQrUrl && (
-                <div className="mt-2">
-                  <img src={values.upiQrUrl} alt="UPI QR" className="h-32 w-32 rounded-lg border object-cover" />
-                </div>
-              )}
-            </div>
           </div>
         ) : null}
 

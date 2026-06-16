@@ -138,7 +138,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
           move_out_date: checkOutDate,
           rent_amount: selectedListing.price * quantity,
           deposit_amount: 0,
-          booking_status: "confirmed",
+          booking_status: "pending",
           payment_status: "pending",
           notes: notes,
           quantity: quantity,
@@ -149,22 +149,8 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
 
       if (bookingError) throw bookingError;
 
-      const { data: transaction, error: transactionError } = await (supabase.from("transactions") as any)
-        .insert({
-          user_id: session.userId,
-          booking_id: booking.id,
-          amount: booking.rent_amount,
-          transaction_type: "payment",
-          payment_status: "pending",
-          description: `Payment for booking ${booking.id}`,
-        })
-        .select()
-        .single();
-
-      if (transactionError) throw transactionError;
-
       setStatus("Booking created. Redirecting to payment...");
-      router.push(`/payment/${transaction.id}`);
+      router.push(`/payment/${booking.id}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Unable to create booking right now.");
     } finally {
@@ -202,7 +188,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
                 {[
                   { label: "Secure hold", value: "Payment handoff" },
                   { label: "Transparent fees", value: "No hidden steps" },
-                  { label: "Wallet ready", value: "Cashback support" },
+                  { label: "Secure Payment", value: "Razorpay Checkout" },
                 ].map((item) => (
                   <div key={item.label} className="rounded-[1.4rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{item.label}</p>
@@ -301,7 +287,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
               ))}
               <div className="rounded-[1.35rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4 text-sm text-[color:var(--muted)]">
                 <p className="font-semibold text-[color:var(--foreground)]">Trust-first handoff</p>
-                <p className="mt-1 leading-6">This page captures stay details only. NestPay will handle confirmation, wallet support, and cashback on the next screen.</p>
+                <p className="mt-1 leading-6">This page captures stay details only. NestPay will handle secure confirmation via Razorpay on the next screen.</p>
               </div>
             </div>
           </details>

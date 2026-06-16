@@ -12,7 +12,6 @@ export async function createListing(payload: {
   price_type: string;
   amenities: string[];
   gender_preference: string;
-  upi_qr_url?: string;
   expires_in_days?: string;
   available_units?: number;
 }) {
