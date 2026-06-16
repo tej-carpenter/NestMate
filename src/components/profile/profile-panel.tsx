@@ -8,21 +8,51 @@ import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/format";
-import { getBookings, getLoginEvents, getPayments, getUsers } from "@/lib/local-data";
 import { getAccountLabel, getPostLoginRoute, loadSupabaseSessionProfile, readLocalSession, signOutSession, subscribeToSupabaseAuth } from "@/lib/session";
 import { isAuthenticatedSession } from "@/lib/auth/permissions";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function ProfilePanel() {
   const [mounted, setMounted] = React.useState(false);
   const [session, setSession] = React.useState(() => null as ReturnType<typeof readLocalSession>);
+  const [userStats, setUserStats] = React.useState({
+    loginCount: 1,
+    totalBookings: 0,
+    paymentRecords: 0,
+  });
 
   React.useEffect(() => {
     const refreshSession = () => setSession(readLocalSession());
 
+    let active = true;
     const handle = window.setTimeout(() => {
-      setMounted(true);
       refreshSession();
-      void loadSupabaseSessionProfile().then(setSession).catch(refreshSession);
+      void loadSupabaseSessionProfile().then((sess) => {
+        if (!active) return;
+        setSession(sess);
+        if (sess?.phone || sess?.email) {
+          const supabase = createSupabaseBrowserClient();
+          Promise.all([
+            supabase.from("users").select("id").eq("email", sess.email || "").maybeSingle(),
+            (supabase.from("bookings") as any).select("id", { count: "exact" }).eq("user_phone", sess.phone || ""),
+            (supabase.from("transactions") as any).select("id", { count: "exact" }).eq("user_phone", sess.phone || "")
+          ]).then(([{ data: user }, { count: bCount }, { count: pCount }]) => {
+            if (active) {
+              setUserStats({
+                loginCount: 1, // mocked for now
+                totalBookings: bCount || 0,
+                paymentRecords: pCount || 0,
+              });
+              setMounted(true);
+            }
+          });
+        } else {
+          setMounted(true);
+        }
+      }).catch((e) => {
+        refreshSession();
+        setMounted(true);
+      });
     }, 0);
 
     const unsubscribe = subscribeToSupabaseAuth(setSession);
@@ -30,6 +60,7 @@ export function ProfilePanel() {
     window.addEventListener("nestmate-auth-change", refreshSession);
 
     return () => {
+      active = false;
       window.clearTimeout(handle);
       unsubscribe();
       window.removeEventListener("storage", refreshSession);
@@ -85,12 +116,6 @@ export function ProfilePanel() {
       </Card>
     );
   }
-
-  const userContact = session.phone || session.email;
-  const user = getUsers().find((item) => item.id === session.userId || item.email === session.email || item.phone === userContact);
-  const bookings = getBookings(userContact);
-  const payments = getPayments(userContact);
-  const loginEvents = getLoginEvents().filter((event) => event.userEmail === session.email || event.userPhone === userContact).slice(0, 4);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.22fr_0.78fr] lg:items-start">
@@ -150,21 +175,21 @@ export function ProfilePanel() {
               <BadgeCheck className="h-4 w-4 text-teal-700 dark:text-teal-300" />
               Login count
             </div>
-            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{user?.loginCount ?? 1}</p>
+            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{userStats.loginCount}</p>
           </div>
           <div className="min-h-32 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
             <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
               <BadgeCheck className="h-4 w-4 text-teal-700 dark:text-teal-300" />
               Total bookings
             </div>
-            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{bookings.length}</p>
+            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{userStats.totalBookings}</p>
           </div>
           <div className="min-h-32 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
             <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
               <BadgeCheck className="h-4 w-4 text-teal-700 dark:text-teal-300" />
               Payment records
             </div>
-            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{payments.length}</p>
+            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{userStats.paymentRecords}</p>
           </div>
         </div>
       </Card>
@@ -203,7 +228,7 @@ export function ProfilePanel() {
         <div className="mt-8 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Recent logins</p>
           <ul className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            {loginEvents.length > 0 ? loginEvents.map((event) => <li key={event.id}>{formatDateTime(event.at)}</li>) : <li>No previous login records.</li>}
+            <li>{formatDateTime(session.signedInAt)}</li>
           </ul>
         </div>
       </Card>

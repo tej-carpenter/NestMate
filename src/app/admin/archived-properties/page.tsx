@@ -3,23 +3,41 @@
 import { useEffect, useState } from "react";
 import { RouteAccessGate } from "@/components/auth/route-access-gate";
 import { ArchivedPropertiesBrowser } from "@/components/listings/archived-properties-browser";
-import { getArchivedProperties, getUsers, restoreListingById } from "@/lib/local-data";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function AdminArchivedPropertiesPage() {
   const [mounted, setMounted] = useState(false);
-  const [records, setRecords] = useState<ReturnType<typeof getArchivedProperties>>([]);
-  const [users, setUsers] = useState<ReturnType<typeof getUsers>>([]);
+  const [records, setRecords] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
-      setRecords(getArchivedProperties());
-      setUsers(getUsers());
-      setMounted(true);
-    }, 0);
-
-    return () => window.clearTimeout(handle);
+    let active = true;
+    async function load() {
+      const supabase = createSupabaseBrowserClient();
+      const [{ data: dbArchived }, { data: dbUsers }] = await Promise.all([
+        supabase.from("listings").select("*").eq("status", "archived"),
+        supabase.from("users").select("*"),
+      ]);
+      if (active) {
+        setRecords(dbArchived as any || []);
+        setUsers(dbUsers as any || []);
+        setMounted(true);
+      }
+    }
+    void load();
+    return () => { active = false; };
   }, [refreshToken]);
+
+  function refreshData() {
+    setRefreshToken(r => r + 1);
+  }
+
+  async function handleRestore(id: string) {
+    const supabase = createSupabaseBrowserClient();
+    await (supabase.from("listings") as any).update({ status: "active" }).eq("id", id);
+    refreshData();
+  }
 
   if (!mounted) {
     return (
@@ -54,8 +72,7 @@ export default function AdminArchivedPropertiesPage() {
           emptyMessage="No archived properties are stored yet. Removed listings will appear here with their history intact."
           showRestore
           onRestore={(record) => {
-            restoreListingById(record.original_property_id);
-            setRefreshToken((value) => value + 1);
+            void handleRestore(record.original_property_id);
           }}
         />
       </main>

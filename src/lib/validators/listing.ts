@@ -27,6 +27,9 @@ export const listingWizardSchema = z.object({
   // listing creation; they are kept for backwards compatibility.
   latitude: z.number().optional(),
   longitude: z.number().optional(),
+  availableUnits: z.number().int().min(1),
+  expiresInDays: z.enum(["30", "60", "90"]),
+  upiQrUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
 });
 
 export type ListingWizardInput = z.infer<typeof listingWizardSchema>;

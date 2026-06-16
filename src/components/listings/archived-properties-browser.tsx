@@ -7,8 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Chip } from "@/components/ui/chip";
-import type { ArchivedPropertyRecord, ArchivedPropertyReason, PersistedUser } from "@/lib/local-data";
-import { archivedPropertyReasons } from "@/lib/local-data";
+import { type ArchivedPropertyReason } from "@/lib/database/schema";
+
+export const archivedPropertyReasons: Record<ArchivedPropertyReason, string> = {
+  owner_removed: "Owner removed",
+  admin_removed: "Admin removed",
+  policy_violation: "Policy violation",
+  duplicate_listing: "Duplicate listing",
+  expired: "Expired",
+  other: "Other",
+};
+
+export type ArchivedPropertyRecord = any;
+export type PersistedUser = any;
 import { formatDateTime, formatRupee } from "@/lib/format";
 
 function reasonLabel(reason: ArchivedPropertyReason) {
@@ -97,7 +108,7 @@ export function ArchivedPropertiesBrowser({
               className="h-11 w-full rounded-[1rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] pl-11 pr-4 text-sm text-slate-700 outline-none"
             >
               <option value="all">All reasons</option>
-              {archivedPropertyReasons.map((reason) => (
+              {(Object.keys(archivedPropertyReasons) as ArchivedPropertyReason[]).map((reason) => (
                 <option key={reason} value={reason}>
                   {reasonLabel(reason)}
                 </option>

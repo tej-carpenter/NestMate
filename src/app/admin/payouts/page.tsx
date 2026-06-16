@@ -7,17 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { RouteAccessGate } from "@/components/auth/route-access-gate";
-import {
-  getBookings,
-  getListingInventory,
-  getPayouts,
-  getTransactions,
-  getUsers,
-  setPayoutNote,
-  updatePayoutStatus,
-  type LedgerStatus,
-} from "@/lib/local-data";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { formatDateTime, formatRupee } from "@/lib/format";
+
+type LedgerStatus = "pending" | "processing" | "paid" | "failed";
 
 const statusOptions: Array<"all" | LedgerStatus> = ["all", "pending", "processing", "paid", "failed"];
 
@@ -26,26 +19,45 @@ export default function AdminPayoutsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<(typeof statusOptions)[number]>("all");
   const [hostFilter, setHostFilter] = useState("all");
-  const [transactions, setTransactions] = useState<ReturnType<typeof getTransactions>>([]);
-  const [payouts, setPayouts] = useState<ReturnType<typeof getPayouts>>([]);
-  const [bookings, setBookings] = useState<ReturnType<typeof getBookings>>([]);
-  const [listings, setListings] = useState<ReturnType<typeof getListingInventory>>([]);
-  const [users, setUsers] = useState<ReturnType<typeof getUsers>>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [payouts, setPayouts] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [listings, setListings] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
-      setTransactions(getTransactions());
-      setPayouts(getPayouts());
-      setBookings(getBookings());
-      setListings(getListingInventory());
-      setUsers(getUsers());
-      setMounted(true);
-    }, 0);
+    let active = true;
+    async function loadData() {
+      const supabase = createSupabaseBrowserClient();
+      const [
+        { data: dbListings },
+        { data: dbUsers },
+        { data: dbBookings },
+        { data: dbTransactions },
+      ] = await Promise.all([
+        supabase.from("listings").select("*"),
+        supabase.from("users").select("*"),
+        supabase.from("bookings").select("*"),
+        supabase.from("transactions").select("*").eq("transaction_type", "payout"),
+      ]);
 
-    return () => window.clearTimeout(handle);
+      if (active) {
+        setPayouts(dbTransactions as any || []);
+        setBookings(dbBookings as any || []);
+        setListings(dbListings as any || []);
+        setUsers(dbUsers as any || []);
+        setMounted(true);
+      }
+    }
+
+    void loadData();
+
+    return () => {
+      active = false;
+    };
   }, [refreshToken]);
 
   const usersByPhone = useMemo(() => new Map(users.map((user) => [user.phone, user.name || user.phone])), [users]);
@@ -142,23 +154,26 @@ export default function AdminPayoutsPage() {
 
   const selectedTransaction = selectedTransactionId ? transactions.find((transaction) => transaction.id === selectedTransactionId) ?? null : null;
 
-  function refreshData() {
+  function refresh() {
     setRefreshToken((value) => value + 1);
   }
 
-  function handleMarkPayout(payoutId: string, status: LedgerStatus) {
-    updatePayoutStatus({
-      payoutId,
-      nextStatus: status,
-      note: status === "paid" ? "Marked completed manually by admin." : "Marked failed manually by admin.",
-    });
-    refreshData();
+  async function handleMarkPaid(id: string) {
+    const supabase = createSupabaseBrowserClient();
+    await (supabase.from("transactions") as any).update({ payment_status: "paid" }).eq("id", id);
+    refresh();
   }
 
-  function handleSavePayoutNote(payoutId: string) {
-    const note = (noteDrafts[payoutId] ?? "").trim();
-    setPayoutNote({ payoutId, note });
-    refreshData();
+  async function handleMarkFailed(id: string) {
+    const supabase = createSupabaseBrowserClient();
+    await (supabase.from("transactions") as any).update({ payment_status: "failed" }).eq("id", id);
+    refresh();
+  }
+
+  async function handleSaveNote(id: string, note: string) {
+    const supabase = createSupabaseBrowserClient();
+    await (supabase.from("transactions") as any).update({ description: note }).eq("id", id);
+    refresh();
   }
 
   if (!mounted) {
@@ -295,9 +310,13 @@ export default function AdminPayoutsPage() {
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Host: {usersByPhone.get(payout.hostUserPhone) ?? payout.hostUserPhone}</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">Created: {formatDateTime(payout.createdAt)}</p>
                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      <Button className="h-10" onClick={() => handleMarkPayout(payout.id, "paid")}>Mark completed</Button>
-                      <Button variant="outline" className="h-10" onClick={() => handleMarkPayout(payout.id, "failed")}>Mark failed</Button>
-                    </div>
+                        <Button variant="outline" size="sm" onClick={() => void handleMarkPaid(payout.id)}>
+                          Mark Paid
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => void handleMarkFailed(payout.id)}>
+                          Mark Failed
+                        </Button>
+                  </div>
                   </div>
                 ))
               ) : (
@@ -347,7 +366,7 @@ export default function AdminPayoutsPage() {
                       />
                     </label>
                     <div className="mt-2">
-                      <Button variant="outline" className="h-10" onClick={() => handleSavePayoutNote(payout.id)}>Save note</Button>
+                      <Button variant="outline" className="h-10" onClick={() => void handleSaveNote(payout.id, noteDrafts[payout.id] ?? payout.note ?? "")}>Save note</Button>
                     </div>
                   </div>
                 ))

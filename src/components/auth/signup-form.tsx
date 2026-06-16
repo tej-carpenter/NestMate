@@ -10,7 +10,6 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getPostLoginRoute, upsertSupabaseUserProfile } from "@/lib/session";
-import { upsertUserOnLogin } from "@/lib/local-data";
 
 const signupSchema = z.object({
   name: z.string().trim().min(2, "Enter your full name.").max(120, "Name is too long."),
@@ -76,16 +75,8 @@ export function SignupForm() {
         role: "user",
       });
 
-      upsertUserOnLogin({
-        id: data.user.id,
-        email: data.user.email,
-        name: parsed.data.name,
-        phone: parsed.data.phone || "",
-        role: "user",
-      });
-
       if (session) {
-        setStatus("Account created. Redirecting...");
+        setStatus("Account created! Signing you in...");
         router.push(getPostLoginRoute(session.role));
         return;
       }

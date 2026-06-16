@@ -27,6 +27,9 @@ const defaultValues: ListingWizardInput = {
   priceType: "monthly",
   amenities: [""],
   genderPreference: "any",
+  availableUnits: 1,
+  expiresInDays: "30",
+  upiQrUrl: "",
   // Latitude/longitude are kept as legacy optional fields. They are not
   // required and are no longer used in the wizard UI.
   latitude: undefined,
@@ -44,15 +47,19 @@ type ListingWizardDraft = {
 const stepDefinitions = [
   {
     title: "Property type",
-    fields: ["propertyType", "title", "description"] as const,
+    fields: ["propertyType", "title", "description", "genderPreference"] as const,
   },
   {
     title: "Address and location",
     fields: ["city", "locality", "address"] as const,
   },
   {
-    title: "Pricing",
-    fields: ["price", "priceType", "genderPreference"] as const,
+    title: "Pricing & Payment",
+    fields: ["price", "priceType", "upiQrUrl"] as const,
+  },
+  {
+    title: "Availability",
+    fields: ["availableUnits", "expiresInDays"] as const,
   },
   {
     title: "Amenities",
@@ -221,6 +228,9 @@ export function ListingWizard() {
         price_type: result.listing.priceType,
         amenities: result.listing.amenities,
         gender_preference: result.listing.genderPreference,
+        upi_qr_url: result.listing.upiQrUrl,
+        available_units: result.listing.availableUnits,
+        expires_in_days: result.listing.expiresInDays,
       });
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(draftStorageKey);
@@ -268,7 +278,15 @@ export function ListingWizard() {
                 <option value="apartment">Apartment</option>
               </select>
             </label>
-            <label className="space-y-2">
+            <label className="space-y-2 lg:col-span-1">
+              <span className="text-sm font-medium text-[color:var(--foreground)]">Gender preference</span>
+              <select className="h-11 w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 text-sm text-[color:var(--foreground)]" {...register("genderPreference")}>
+                <option value="any">Any</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </label>
+            <label className="space-y-2 lg:col-span-2">
               <span className="text-sm font-medium text-[color:var(--foreground)]">Title</span>
               <Input {...register("title")} placeholder="Fully furnished PG near Electronic City" />
             </label>
@@ -325,9 +343,9 @@ export function ListingWizard() {
         ) : null}
 
         {stepIndex === 2 ? (
-          <div className="grid gap-4 md:grid-cols-[1.05fr_1fr_1fr]">
-            <label className="space-y-2 md:col-span-1">
-              <span className="text-sm font-medium text-[color:var(--foreground)]">Monthly price</span>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-2">
+              <span className="text-sm font-medium text-[color:var(--foreground)]">Price</span>
               <Input {...register("price", { valueAsNumber: true })} inputMode="numeric" placeholder="12000" />
             </label>
             <label className="space-y-2">
@@ -338,18 +356,64 @@ export function ListingWizard() {
                 <option value="bedspace">Bed space</option>
               </select>
             </label>
+            <div className="md:col-span-2 space-y-2">
+              <span className="text-sm font-medium text-[color:var(--foreground)]">UPI QR Code (Optional)</span>
+              <p className="text-xs text-slate-500">Upload your UPI QR code so guests can scan and pay easily. Uses Cloudinary.</p>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  setStatus("Uploading QR code to Cloudinary...");
+                  try {
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "");
+                    
+                    const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+                      method: "POST",
+                      body: formData,
+                    });
+                    const data = await res.json();
+                    if (data.secure_url) {
+                      setValue("upiQrUrl", data.secure_url, { shouldValidate: true });
+                      setStatus("QR code uploaded successfully!");
+                    } else {
+                      setStatus("Failed to upload QR code.");
+                    }
+                  } catch (err) {
+                    setStatus("Error uploading image.");
+                  }
+                }}
+              />
+              {values.upiQrUrl && (
+                <div className="mt-2">
+                  <img src={values.upiQrUrl} alt="UPI QR" className="h-32 w-32 rounded-lg border object-cover" />
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        {stepIndex === 3 ? (
+          <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2">
-              <span className="text-sm font-medium text-[color:var(--foreground)]">Gender preference</span>
-              <select className="h-11 w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 text-sm text-[color:var(--foreground)]" {...register("genderPreference")}>
-                <option value="any">Any</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
+              <span className="text-sm font-medium text-[color:var(--foreground)]">Number of vacancies (Available Units)</span>
+              <Input {...register("availableUnits", { valueAsNumber: true })} inputMode="numeric" placeholder="1" />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium text-[color:var(--foreground)]">Listing Duration</span>
+              <select className="h-11 w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 text-sm text-[color:var(--foreground)]" {...register("expiresInDays")}>
+                <option value="30">30 Days</option>
+                <option value="60">60 Days</option>
+                <option value="90">90 Days</option>
               </select>
             </label>
           </div>
         ) : null}
 
-        {stepIndex === 3 ? (
+        {stepIndex === 4 ? (
           <div className="grid gap-4">
             <label className="space-y-2">
               <span className="text-sm font-medium text-[color:var(--foreground)]">Amenities, comma separated</span>
@@ -371,7 +435,7 @@ export function ListingWizard() {
           </div>
         ) : null}
 
-        {stepIndex === 4 ? (
+        {stepIndex === 5 ? (
           <div className="grid gap-4">
             <label className="space-y-2">
               <span className="text-sm font-medium text-slate-700">Listing photos</span>
@@ -399,7 +463,7 @@ export function ListingWizard() {
           </div>
         ) : null}
 
-        {stepIndex === 5 ? (
+        {stepIndex === 6 ? (
           <div className="grid gap-4 rounded-[1.75rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-6">
             <div>
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Preview</p>
@@ -411,16 +475,12 @@ export function ListingWizard() {
                 <dd>{[values.address, values.locality, values.city].filter((part) => typeof part === "string" && part.trim().length > 0).join(", ") || "Location pending"}</dd>
               </div>
               <div>
-                <dt className="font-medium text-slate-950 dark:text-slate-50">Google Maps</dt>
-                <dd className="break-all text-xs">{previewGoogleMapsUrl}</dd>
-              </div>
-              <div>
                 <dt className="font-medium text-slate-950 dark:text-slate-50">Price</dt>
                 <dd>{values.price ? `₹${values.price.toLocaleString("en-IN")}` : "Price pending"}</dd>
               </div>
               <div>
-                <dt className="font-medium text-slate-950 dark:text-slate-50">Amenities</dt>
-                <dd>{amenities.length > 0 ? amenities.join(", ") : "None selected"}</dd>
+                <dt className="font-medium text-slate-950 dark:text-slate-50">Availability</dt>
+                <dd>{values.availableUnits} units, expires in {values.expiresInDays} days</dd>
               </div>
               <div>
                 <dt className="font-medium text-slate-950 dark:text-slate-50">Status</dt>

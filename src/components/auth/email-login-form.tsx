@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getPostLoginRoute, loadSupabaseSessionProfile, upsertSupabaseUserProfile } from "@/lib/session";
-import { upsertUserOnLogin } from "@/lib/local-data";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Enter a valid email address."),
@@ -63,14 +62,6 @@ export function EmailLoginForm() {
       if (!session) {
         throw new Error("Unable to load your profile.");
       }
-
-      upsertUserOnLogin({
-        id: session.userId,
-        email: session.email,
-        name: session.name,
-        phone: session.phone,
-        role: session.role,
-      });
 
       setStatus("Signed in. Redirecting...");
       router.push(getPostLoginRoute(session.role));

@@ -6,52 +6,75 @@ import { Card } from "@/components/ui/card";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { RouteAccessGate } from "@/components/auth/route-access-gate";
-import {
-  approveListingById,
-  archiveListingById,
-  deleteListingById,
-  getBookings,
-  getListingInventory,
-  getPayments,
-  getPayouts,
-  getTrafficEvents,
-  getTransactions,
-  getUsers,
-  rejectListingById,
-  renewExpiredListingById,
-  suspendListingById,
-  restoreListingById,
-  updatePayoutStatus,
-} from "@/lib/local-data";
 import { formatDateTime, formatRupee } from "@/lib/format";
 import { getListingStatusLabel, isPublicListingStatus } from "@/lib/listings/status";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function AdminDashboardPage() {
   const [mounted, setMounted] = useState(false);
-  const [listings, setListings] = useState<ReturnType<typeof getListingInventory>>([]);
-  const [users, setUsers] = useState<ReturnType<typeof getUsers>>([]);
-  const [bookings, setBookings] = useState<ReturnType<typeof getBookings>>([]);
-  const [payments, setPayments] = useState<ReturnType<typeof getPayments>>([]);
-  const [transactions, setTransactions] = useState<ReturnType<typeof getTransactions>>([]);
-  const [payouts, setPayouts] = useState<ReturnType<typeof getPayouts>>([]);
-  const [traffic, setTraffic] = useState<ReturnType<typeof getTrafficEvents>>([]);
+  const [listings, setListings] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [payouts, setPayouts] = useState<any[]>([]);
+  const [traffic, setTraffic] = useState<any[]>([]);
   const [refreshToken, setRefreshToken] = useState(0);
 
   void refreshToken;
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
-      setListings(getListingInventory());
-      setUsers(getUsers());
-      setBookings(getBookings());
-      setPayments(getPayments());
-      setTransactions(getTransactions());
-      setPayouts(getPayouts());
-      setTraffic(getTrafficEvents());
-      setMounted(true);
-    }, 0);
+    let active = true;
 
-    return () => window.clearTimeout(handle);
+    async function loadData() {
+      const supabase = createSupabaseBrowserClient();
+      
+      const [
+        { data: dbListings },
+        { data: dbUsers },
+        { data: dbBookings },
+        { data: dbTransactions },
+      ] = await Promise.all([
+        supabase.from("listings").select("*"),
+        supabase.from("users").select("*"),
+        supabase.from("bookings").select("*"),
+        supabase.from("transactions").select("*"),
+      ]);
+      
+      if (active) {
+        setListings(dbListings?.map(l => ({
+          id: l.id,
+          title: l.title,
+          slug: l.slug ?? l.id,
+          kind: l.space_type,
+          city: l.city,
+          locality: l.locality,
+          address: l.address,
+          description: l.description,
+          status: l.status,
+          moderationState: "approved",
+          totalUnits: l.available_units ?? 1,
+          availableUnits: l.available_units ?? 1,
+          amenities: l.amenities ?? [],
+        })) as any || []);
+        
+        setUsers(dbUsers as any || []);
+        setBookings(dbBookings as any || []);
+        
+        const txs = dbTransactions || [];
+        setTransactions(txs as any);
+        setPayments(txs.filter(t => t.transaction_type === "payment") as any);
+        setPayouts(txs.filter(t => t.transaction_type === "payout") as any);
+        setTraffic([]);
+        setMounted(true);
+      }
+    }
+
+    void loadData();
+
+    return () => {
+      active = false;
+    };
   }, [refreshToken]);
 
   if (!mounted) {
@@ -99,55 +122,64 @@ export default function AdminDashboardPage() {
     setRefreshToken((value) => value + 1);
   }
 
-  function approveListing(listingId: string) {
-    approveListingById(listingId);
+  async function approveListing(listingId: string) {
+    const supabase = createSupabaseBrowserClient();
+    await (supabase.from("listings") as any).update({ status: "active" }).eq("id", listingId);
     refresh();
   }
 
-  function rejectListing(listingId: string) {
+  async function rejectListing(listingId: string) {
     const reason = window.prompt("Enter the rejection reason")?.trim();
-    if (!reason) {
-      return;
-    }
-
-    rejectListingById(listingId, reason);
+    if (!reason) return;
+    const supabase = createSupabaseBrowserClient();
+    await (supabase.from("listings") as any).update({ status: "rejected" }).eq("id", listingId);
     refresh();
   }
 
-  function suspendListing(listingId: string) {
+  async function suspendListing(listingId: string) {
     const reason = window.prompt("Enter the suspension reason")?.trim();
-    suspendListingById(listingId, reason);
+    const supabase = createSupabaseBrowserClient();
+    await (supabase.from("listings") as any).update({ status: "suspended" }).eq("id", listingId);
     refresh();
   }
 
-  function restoreListing(listingId: string) {
+  async function restoreListing(listingId: string) {
     const reason = window.prompt("Enter the restore note")?.trim();
-    restoreListingById(listingId, reason);
+    const supabase = createSupabaseBrowserClient();
+    await (supabase.from("listings") as any).update({ status: "active" }).eq("id", listingId);
     refresh();
   }
 
-  function archiveListing(listingId: string) {
+  async function archiveListing(listingId: string) {
     const reason = window.prompt("Enter the archive reason")?.trim();
-    archiveListingById(listingId, reason);
+    const supabase = createSupabaseBrowserClient();
+    await (supabase.from("listings") as any).update({ status: "archived" }).eq("id", listingId);
     refresh();
   }
 
-  function renewExpiredListing(listingId: string) {
-    renewExpiredListingById(listingId);
+  async function renewExpiredListing(listingId: string) {
+    const supabase = createSupabaseBrowserClient();
+    await (supabase.from("listings") as any).update({ status: "active" }).eq("id", listingId);
     refresh();
   }
 
-  function removeListing(listingId: string) {
-    deleteListingById(listingId);
+  async function removeListing(listingId: string) {
+    const confirm = window.confirm("Are you sure you want to delete this listing permanently?");
+    if (!confirm) return;
+    const supabase = createSupabaseBrowserClient();
+    await (supabase.from("listings") as any).delete().eq("id", listingId);
     refresh();
   }
 
-  function completePayout(payoutId: string) {
-    updatePayoutStatus({
-      payoutId,
-      nextStatus: "paid",
-      note: "Completed manually by admin.",
-    });
+  async function markPayoutPaid(payoutId: string) {
+    const supabase = createSupabaseBrowserClient();
+    await (supabase.from("transactions") as any).update({ status: "paid" }).eq("id", payoutId);
+    refresh();
+  }
+
+  async function markPayoutFailed(payoutId: string) {
+    const supabase = createSupabaseBrowserClient();
+    await (supabase.from("transactions") as any).update({ status: "failed" }).eq("id", payoutId);
     refresh();
   }
 
@@ -245,9 +277,9 @@ export default function AdminDashboardPage() {
                       <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">{formatRupee(transaction.amount)}</p>
                       <Chip className="!rounded-full px-3 py-1 text-xs font-semibold">{transaction.status}</Chip>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Booking: {transaction.bookingId}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Host: {transaction.hostUserPhone ?? "Unassigned"}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Updated: {formatDateTime(transaction.updatedAt)}</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Booking: {transaction.booking_id}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Host: {transaction.host_phone ?? "Unassigned"}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Updated: {formatDateTime(transaction.updated_at || transaction.created_at)}</p>
                   </div>
                 ))
               ) : (
@@ -267,10 +299,10 @@ export default function AdminDashboardPage() {
                       <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">{formatRupee(payout.amount)}</p>
                       <Chip className="!rounded-full px-3 py-1 text-xs font-semibold">{payout.status}</Chip>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Host: {payout.hostUserPhone}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Created: {formatDateTime(payout.createdAt)}</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Host: {payout.host_phone}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Created: {formatDateTime(payout.created_at)}</p>
                     <div className="mt-3">
-                      <Button className="h-10" onClick={() => completePayout(payout.id)}>Mark as completed</Button>
+                      <Button className="h-10" onClick={() => void markPayoutPaid(payout.id)}>Mark as completed</Button>
                     </div>
                   </div>
                 ))
@@ -294,47 +326,49 @@ export default function AdminDashboardPage() {
               </div>
               <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{property.description}</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                {property.amenities.map((amenity) => (
-                  <Chip key={amenity} className="!rounded-full px-3 py-1 text-xs font-medium">{amenity}</Chip>
+                {property.amenities?.map((amenity: string) => (
+                  <Chip key={amenity} className="!rounded-full px-3 py-1 text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                    {amenity}
+                  </Chip>
                 ))}
               </div>
               <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">Units: {formatAvailability(property)}</p>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <Button asChild variant="outline" className="sm:flex-1">
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row flex-wrap">
+                <Button asChild variant="outline" className="sm:flex-1 min-w-[100px]">
                   <Link href={`/host/listings/new?edit=${property.slug}`}>Edit</Link>
                 </Button>
-                {property.status === "pending_review" ? (
-                  <Button variant="outline" className="sm:flex-1" onClick={() => approveListing(property.id)}>
+                {property.status !== "active" ? (
+                  <Button variant="outline" className="sm:flex-1 min-w-[100px] border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50" onClick={() => void approveListing(property.id)}>
                     Approve
                   </Button>
                 ) : null}
-                {property.status === "pending_review" || property.status === "approved" ? (
-                  <Button variant="outline" className="sm:flex-1" onClick={() => rejectListing(property.id)}>
+                {property.status !== "rejected" && property.status !== "active" ? (
+                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void rejectListing(property.id)}>
                     Reject
                   </Button>
                 ) : null}
-                {property.moderationState === "suspended" || property.status === "archived" ? (
-                  <Button variant="outline" className="sm:flex-1" onClick={() => restoreListing(property.id)}>
+                {property.status === "suspended" || property.status === "archived" ? (
+                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void restoreListing(property.id)}>
                     Restore
                   </Button>
                 ) : null}
-                {property.status === "approved" ? (
-                  <Button variant="outline" className="sm:flex-1" onClick={() => suspendListing(property.id)}>
+                {property.status === "active" ? (
+                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void suspendListing(property.id)}>
                     Suspend
                   </Button>
                 ) : null}
                 {property.status !== "archived" ? (
-                  <Button variant="outline" className="sm:flex-1" onClick={() => archiveListing(property.id)}>
+                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void archiveListing(property.id)}>
                     Archive
                   </Button>
                 ) : null}
                 {property.status === "expired" ? (
-                  <Button variant="outline" className="sm:flex-1" onClick={() => renewExpiredListing(property.id)}>
+                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void renewExpiredListing(property.id)}>
                     Renew
                   </Button>
                 ) : null}
-                <Button variant="ghost" className="sm:flex-1" onClick={() => removeListing(property.id)}>
-                  Archive
+                <Button variant="outline" className="sm:flex-1 min-w-[100px] text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/50" onClick={() => void removeListing(property.id)}>
+                  Delete
                 </Button>
               </div>
             </Card>

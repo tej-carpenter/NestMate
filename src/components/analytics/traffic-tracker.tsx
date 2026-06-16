@@ -1,23 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { recordTrafficEvent } from "@/lib/local-data";
 import { readLocalSession } from "@/lib/session";
 
 export function TrafficTracker() {
   const pathname = usePathname();
+  const hasFired = useRef(false);
 
   useEffect(() => {
-    if (!pathname) {
-      return;
+    if (pathname && !hasFired.current) {
+      hasFired.current = true;
+      // Traffic tracking is disabled in Supabase mode for now
     }
-
-    const session = readLocalSession();
-    recordTrafficEvent({
-      route: pathname,
-      role: session?.role ?? "anonymous",
-    });
   }, [pathname]);
 
   return null;

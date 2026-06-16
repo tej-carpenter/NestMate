@@ -45,6 +45,9 @@
 | `nestscore` | `numeric` |  Nullable |
 | `created_at` | `timestamptz` |  Nullable |
 | `updated_at` | `timestamptz` |  Nullable |
+| `upi_qr_url` | `text` |  Nullable |
+| `expires_at` | `timestamptz` |  Nullable |
+| `available_units` | `int4` |  Nullable |
 
 ## Table `bookings`
 
@@ -65,6 +68,8 @@
 | `notes` | `text` |  Nullable |
 | `created_at` | `timestamptz` |  Nullable |
 | `updated_at` | `timestamptz` |  Nullable |
+| `quantity` | `int4` |  Nullable |
+| `guest_count` | `int4` |  Nullable |
 
 ## Table `transactions`
 

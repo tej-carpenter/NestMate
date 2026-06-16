@@ -3,25 +3,36 @@
 import { useEffect, useState } from "react";
 import { RouteAccessGate } from "@/components/auth/route-access-gate";
 import { ArchivedPropertiesBrowser } from "@/components/listings/archived-properties-browser";
-import { getArchivedPropertiesForOwner, getUsers } from "@/lib/local-data";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { readLocalSession } from "@/lib/session";
 
 export default function ArchivedListingsPage() {
   const [mounted, setMounted] = useState(false);
   const [session, setSession] = useState<ReturnType<typeof readLocalSession>>(null);
-  const [records, setRecords] = useState<ReturnType<typeof getArchivedPropertiesForOwner>>([]);
-  const [users, setUsers] = useState<ReturnType<typeof getUsers>>([]);
+  const [records, setRecords] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
+    let active = true;
+    async function load() {
       const nextSession = readLocalSession();
-      setSession(nextSession);
-      setUsers(getUsers());
-      setRecords(nextSession ? getArchivedPropertiesForOwner(nextSession.userId) : []);
-      setMounted(true);
-    }, 0);
+      if (active) setSession(nextSession);
+      
+      const supabase = createSupabaseBrowserClient();
+      const [{ data: dbArchived }, { data: dbUsers }] = await Promise.all([
+        supabase.from("listings").select("*").eq("status", "archived").eq("host_phone", nextSession?.phone || ""),
+        supabase.from("users").select("*"),
+      ]);
+      
+      if (active) {
+        setUsers(dbUsers as any || []);
+        setRecords(dbArchived as any || []);
+        setMounted(true);
+      }
+    }
+    void load();
 
-    return () => window.clearTimeout(handle);
+    return () => { active = false; };
   }, []);
 
   return (

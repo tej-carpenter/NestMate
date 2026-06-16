@@ -6,22 +6,47 @@ import { ArrowRight, BadgeCheck, ChevronDown, Coins, CreditCard, RefreshCw, Wall
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatRupee } from "@/lib/format";
-import { getPayments } from "@/lib/local-data";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { loadSupabaseSessionProfile, readLocalSession } from "@/lib/session";
 import { isAuthenticatedSession } from "@/lib/auth/permissions";
 
 export default function WalletPage() {
   const [mounted, setMounted] = useState(false);
   const [session, setSession] = useState<ReturnType<typeof readLocalSession>>(null);
+  const [payments, setPayments] = useState<any[]>([]);
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
-      setSession(readLocalSession());
-      void loadSupabaseSessionProfile().then(setSession).catch(() => setSession(readLocalSession()));
-      setMounted(true);
-    }, 0);
+    let active = true;
+    async function load() {
+      const sess = readLocalSession();
+      setSession(sess);
+      try {
+        const fullSess = await loadSupabaseSessionProfile();
+        if (active) setSession(fullSess);
+      } catch (e) {
+        if (active) setSession(sess);
+      }
 
-    return () => window.clearTimeout(handle);
+      const supabase = createSupabaseBrowserClient();
+      const userEmailOrPhone = sess?.email || sess?.phone;
+      if (userEmailOrPhone) {
+        // Find bookings for the user to get payments
+        const { data: userBookings } = await supabase.from("bookings").select("id").eq("user_phone", userEmailOrPhone);
+        if (userBookings?.length) {
+          const bookingIds = userBookings.map(b => b.id);
+          const { data: dbPayments } = await (supabase.from("transactions") as any)
+            .select("*")
+            .eq("transaction_type", "payment")
+            .in("booking_id", bookingIds);
+          if (active) {
+            setPayments(dbPayments || []);
+          }
+        }
+      }
+      if (active) setMounted(true);
+    }
+    void load();
+    return () => { active = false; };
   }, []);
 
   if (!mounted) {
@@ -55,23 +80,22 @@ export default function WalletPage() {
     );
   }
 
-  const payments = session ? getPayments(session.phone || session.email) : [];
-  const cashbackEarned = payments.reduce((total, payment) => total + (payment.status === "paid" ? Math.max(0, Math.round(payment.amount * 0.03)) : 0), 0);
-  const refundable = payments.reduce((total, payment) => total + (payment.status === "refund_requested" ? payment.amount : 0), 0);
+  const cashbackEarned = payments.reduce((total, payment) => total + (payment.payment_status === "paid" ? Math.max(0, Math.round(payment.amount * 0.03)) : 0), 0);
+  const refundable = payments.reduce((total, payment) => total + (payment.payment_status === "refund_requested" ? payment.amount : 0), 0);
   const walletBalance = cashbackEarned + Math.round(refundable * 0.05);
 
   const ledger = payments.map((payment) => ({
     id: payment.id,
-    title: `Booking ${payment.bookingId.slice(0, 6)}`,
+    title: `Booking ${payment.booking_id?.slice(0, 6) || ""}`,
     amount: payment.amount,
-    status: payment.status,
-    method: payment.method,
+    status: payment.payment_status || "pending",
+    method: payment.payment_method || "unknown",
     tone:
-      payment.status === "paid"
+      payment.payment_status === "paid"
         ? "text-emerald-700 dark:text-emerald-300"
-        : payment.status === "refund_requested"
+        : payment.payment_status === "refund_requested"
           ? "text-amber-700 dark:text-amber-300"
-          : payment.status === "refunded"
+          : payment.payment_status === "refunded"
             ? "text-rose-700 dark:text-rose-300"
             : "text-slate-600 dark:text-slate-300",
   }));
