@@ -33,7 +33,7 @@ export default function PaymentPage({ params }: { params: Promise<{ paymentId: s
           bookings!inner(
             move_in_date,
             move_out_date,
-            listings!inner(title)
+            listings!inner(title, upi_qr_url)
           )
         `)
         .eq("id", resolvedParams.paymentId)
@@ -47,6 +47,7 @@ export default function PaymentPage({ params }: { params: Promise<{ paymentId: s
             checkInDate: (data.bookings as any)?.move_in_date,
             checkOutDate: (data.bookings as any)?.move_out_date,
             listingTitle: (data.bookings as any)?.listings?.title,
+            upiQrUrl: (data.bookings as any)?.listings?.upi_qr_url,
           });
           setMethod((data.payment_method as any) ?? "upi");
           setPaymentStatusState((data.payment_status as any) ?? "pending");
@@ -163,7 +164,7 @@ export default function PaymentPage({ params }: { params: Promise<{ paymentId: s
 
           <div className="p-5 sm:p-8">
             <div className="grid gap-3 sm:grid-cols-3">
-              {(["upi", "card", "wallet"] as const).map((option) => (
+              {(["upi", "wallet"] as const).map((option) => (
                 <button
                   key={option}
                   type="button"
@@ -175,6 +176,16 @@ export default function PaymentPage({ params }: { params: Promise<{ paymentId: s
                 </button>
               ))}
             </div>
+
+            {method === "upi" && currentPayment.upiQrUrl && (
+              <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/50">
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Scan to Pay</p>
+                <div className="mt-4 flex justify-center">
+                  <img src={currentPayment.upiQrUrl} alt="UPI QR Code" className="max-w-[200px] rounded-lg shadow-sm" />
+                </div>
+                <p className="mt-4 text-center text-xs text-[color:var(--muted)]">Scan this QR code with any UPI app to complete the payment.</p>
+              </div>
+            )}
 
             {paymentStatus === "paid" ? (
               <div className="mt-5 rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-5 text-emerald-950 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-50">

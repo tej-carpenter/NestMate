@@ -7,9 +7,8 @@ import { AccountActions } from "@/components/nav/account-actions";
 
 const navItems = [
   { href: "/search", label: "Search" },
-  { href: "/nestscore", label: "NestScore" },
-  { href: "/map", label: "Map" },
   { href: "/city/Indore", label: "City pages" },
+  { href: "/about", label: "About us" },
 ];
 
 export function SiteHeader() {

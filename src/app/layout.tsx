@@ -62,7 +62,7 @@ export default function RootLayout({
           <div className="flex min-h-dvh flex-col text-slate-950 dark:text-slate-50">
             <TrafficTracker />
             <SiteHeader />
-            <div className="flex flex-1 flex-col pb-24 md:pb-0">{children}</div>
+            <div className="flex flex-1 flex-col">{children}</div>
             <SiteFooter />
             <BottomNav />
             <Toaster richColors position="top-center" closeButton />

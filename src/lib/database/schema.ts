@@ -92,22 +92,20 @@ export interface NestScoreRecord {
   review_text: string | null;
   created_at: string;
 }
-
 export interface TransactionRecord {
   id: string;
   user_id: string;
   booking_id: string | null;
   amount: number;
-  transaction_type: "booking" | "deposit" | "refund" | "wallet_topup" | "payout";
+  transaction_type: "payment" | "booking" | "deposit" | "refund" | "wallet_topup" | "payout";
   payment_method: "upi" | "card" | "wallet" | "emi";
-  payment_status: "pending" | "processing" | "paid" | "failed";
+  payment_status: "pending" | "processing" | "paid" | "completed" | "failed" | "refund_requested" | "refunded";
   razorpay_transaction_id: string | null;
   created_at: string;
 }
 
 export interface PayoutRecord {
   id: string;
-  transaction_id: string;
   booking_id: string;
   host_id: string;
   amount: number;
