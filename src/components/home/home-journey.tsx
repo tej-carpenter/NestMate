@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ListingCard } from "@/components/listings/listing-card";
 import { getActiveListings } from "@/lib/listing-queries";
-import type { ListingInventoryItem } from "@/lib/local-data";
+import type { ListingInventoryItem } from "@/types/models";
 
 const trustHighlights = [
   {

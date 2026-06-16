@@ -16,7 +16,7 @@ import { formatRupee } from "@/lib/format";
 import { buildListingThumbnail } from "@/lib/listing-thumbnail";
 import { formatPricePeriod } from "@/lib/pricing";
 import { resolveGoogleMapsUrl } from "@/lib/google-maps";
-import type { ListingInventoryItem } from "@/lib/local-data";
+import type { ListingInventoryItem } from "@/types/models";
 import { canSaveListing } from "@/lib/auth/permissions";
 import { loadSupabaseSessionProfile, readLocalSession } from "@/lib/session";
 import { isPublicListingStatus } from "@/lib/listings/status";

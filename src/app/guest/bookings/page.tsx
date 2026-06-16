@@ -6,25 +6,79 @@ import { ArrowRight, BadgeCheck, CalendarDays, CreditCard, MapPinned } from "luc
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatRupee } from "@/lib/format";
-import { getBookings, getPaymentForBooking } from "@/lib/local-data";
 import { loadSupabaseSessionProfile, readLocalSession } from "@/lib/session";
 import { isAuthenticatedSession } from "@/lib/auth/permissions";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function GuestBookingsPage() {
   const [mounted, setMounted] = useState(false);
   const [session, setSession] = useState<ReturnType<typeof readLocalSession>>(null);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState(true);
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
-      setSession(readLocalSession());
-      void loadSupabaseSessionProfile().then(setSession).catch(() => setSession(readLocalSession()));
-      setMounted(true);
-    }, 0);
+    let active = true;
 
-    return () => window.clearTimeout(handle);
+    async function loadData() {
+      let currentSession = readLocalSession();
+      setSession(currentSession);
+
+      try {
+        currentSession = await loadSupabaseSessionProfile();
+        if (active) setSession(currentSession);
+      } catch {
+        if (active) setSession(readLocalSession());
+      }
+
+      if (currentSession?.userId) {
+        const supabase = createSupabaseBrowserClient();
+        const { data } = await (supabase.from("bookings") as any)
+          .select(`
+            id,
+            move_in_date,
+            move_out_date,
+            rent_amount,
+            booking_status,
+            quantity,
+            guest_count,
+            listings!inner(title, space_type),
+            transactions(id, payment_status, transaction_type)
+          `)
+          .eq("guest_id", currentSession.userId)
+          .order("created_at", { ascending: false });
+
+        if (active && data) {
+          const formattedBookings = data.map((b: any) => ({
+            id: b.id,
+            listingTitle: b.listings?.title || "Unknown Listing",
+            listingKind: b.listings?.space_type || "Space",
+            checkInDate: b.move_in_date,
+            checkOutDate: b.move_out_date,
+            quantity: b.quantity || 1,
+            guestCount: b.guest_count || 1,
+            status: b.booking_status,
+            amount: b.rent_amount,
+            // Find the payment transaction if it exists
+            payment: (b.transactions || []).find((t: any) => t.transaction_type === "payment"),
+          }));
+          setBookings(formattedBookings);
+        }
+      }
+      
+      if (active) {
+        setLoadingBookings(false);
+        setMounted(true);
+      }
+    }
+
+    loadData();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  if (!mounted) {
+  if (!mounted || loadingBookings) {
     return (
       <main className="mx-auto w-full max-w-7xl px-4 py-6 pb-20 sm:px-6 sm:py-10 lg:px-8">
         <div className="space-y-6">
@@ -39,6 +93,7 @@ export default function GuestBookingsPage() {
       </main>
     );
   }
+
   if (!isAuthenticatedSession(session)) {
     return (
       <main className="mx-auto w-full max-w-7xl px-4 py-6 pb-20 sm:px-6 sm:py-10 lg:px-8">
@@ -55,7 +110,6 @@ export default function GuestBookingsPage() {
     );
   }
 
-  const bookings = session ? getBookings(session.phone || session.email) : [];
   const confirmedCount = bookings.filter((booking) => booking.status === "confirmed").length;
 
   return (
@@ -65,7 +119,7 @@ export default function GuestBookingsPage() {
           <div className="bg-[linear-gradient(135deg,rgba(15,118,110,0.16),rgba(255,255,255,0.96),rgba(20,184,166,0.10))] p-6 sm:p-8 dark:bg-[linear-gradient(135deg,rgba(15,118,110,0.22),rgba(15,23,42,0.92),rgba(20,184,166,0.12))]">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-300">Booking history</p>
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl text-slate-950 dark:text-slate-50">Review stays, deposits, and payment status</h1>
-            <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600 dark:text-slate-300">All booked rooms, PGs, hostels, and bedspaces are stored locally per signed-in account and linked to the NestPay ledger.</p>
+            <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600 dark:text-slate-300">All booked rooms, PGs, hostels, and bedspaces are stored safely in your NestMate account and linked to the NestPay ledger.</p>
           </div>
         </Card>
 
@@ -74,7 +128,7 @@ export default function GuestBookingsPage() {
             {[
               { label: "Bookings", value: bookings.length.toString(), icon: CalendarDays },
               { label: "Confirmed", value: confirmedCount.toString(), icon: BadgeCheck },
-              { label: "Payment links", value: bookings.filter((booking) => getPaymentForBooking(booking.id)).length.toString(), icon: CreditCard },
+              { label: "Payment links", value: bookings.filter((booking) => booking.payment).length.toString(), icon: CreditCard },
             ].map((item) => {
               const Icon = item.icon;
 
@@ -107,7 +161,7 @@ export default function GuestBookingsPage() {
         ) : (
           <div className="grid gap-4">
             {bookings.map((booking) => {
-              const payment = getPaymentForBooking(booking.id);
+              const payment = booking.payment;
 
               return (
                 <Card key={booking.id} className="p-6 sm:p-7">
@@ -129,10 +183,10 @@ export default function GuestBookingsPage() {
 
                   <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm text-slate-700 dark:text-slate-200">
-                      Amount: <strong>{formatRupee(booking.amount)}</strong> · Payment: <strong>{payment?.status ?? "pending"}</strong>
+                      Amount: <strong>{formatRupee(booking.amount)}</strong> · Payment: <strong>{payment?.payment_status ?? "pending"}</strong>
                     </p>
                     <Button asChild variant="outline" size="sm">
-                      <Link href={payment ? `/payment/${payment.id}` : `/book/${booking.listingSlug}`}>
+                      <Link href={payment ? `/payment/${payment.id}` : `/search`}>
                         Open payment
                         <ArrowRight className="h-4 w-4" />
                       </Link>

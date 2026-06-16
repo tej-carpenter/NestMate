@@ -6,13 +6,12 @@ import { ArrowRight, BadgeCheck, ChevronDown, CreditCard, Wallet } from "lucide-
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatRupee } from "@/lib/format";
-import { getBookingById, getPaymentById, setPaymentStatus } from "@/lib/local-data";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function PaymentPage({ params }: { params: Promise<{ paymentId: string }> | { paymentId: string } }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [payment, setPayment] = useState<ReturnType<typeof getPaymentById>>(null);
-  const [booking, setBooking] = useState<ReturnType<typeof getBookingById>>(null);
+  const [payment, setPayment] = useState<any>(null);
   const [method, setMethod] = useState<"upi" | "card" | "wallet">("upi");
   const [paymentStatus, setPaymentStatusState] = useState<"pending" | "paid" | "refund_requested" | "refunded">("pending");
   const [status, setStatus] = useState<string | null>(null);
@@ -20,16 +19,47 @@ export default function PaymentPage({ params }: { params: Promise<{ paymentId: s
   const resolvedParams = use(params as Promise<{ paymentId: string }>);
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
-      const nextPayment = getPaymentById(resolvedParams.paymentId);
-      setPayment(nextPayment);
-      setBooking(nextPayment ? getBookingById(nextPayment.bookingId) : null);
-      setMethod(nextPayment?.method ?? "upi");
-      setPaymentStatusState(nextPayment?.status ?? "pending");
-      setMounted(true);
-    }, 0);
+    let active = true;
 
-    return () => window.clearTimeout(handle);
+    async function loadPayment() {
+      const supabase = createSupabaseBrowserClient();
+      const { data } = await supabase
+        .from("transactions")
+        .select(`
+          id,
+          amount,
+          payment_method,
+          payment_status,
+          bookings!inner(
+            move_in_date,
+            move_out_date,
+            listings!inner(title)
+          )
+        `)
+        .eq("id", resolvedParams.paymentId)
+        .maybeSingle();
+
+      if (active) {
+        if (data) {
+          setPayment({
+            id: data.id,
+            amount: data.amount,
+            checkInDate: (data.bookings as any)?.move_in_date,
+            checkOutDate: (data.bookings as any)?.move_out_date,
+            listingTitle: (data.bookings as any)?.listings?.title,
+          });
+          setMethod((data.payment_method as any) ?? "upi");
+          setPaymentStatusState((data.payment_status as any) ?? "pending");
+        }
+        setMounted(true);
+      }
+    }
+
+    void loadPayment();
+
+    return () => {
+      active = false;
+    };
   }, [resolvedParams.paymentId]);
 
   const cashback = Math.max(0, Math.round((payment?.amount ?? 0) * 0.03));
@@ -46,7 +76,7 @@ export default function PaymentPage({ params }: { params: Promise<{ paymentId: s
     );
   }
 
-  if (!payment || !booking) {
+  if (!payment) {
     return (
       <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
         <Card className="p-6">
@@ -61,18 +91,35 @@ export default function PaymentPage({ params }: { params: Promise<{ paymentId: s
   }
 
   const currentPayment = payment;
-  const currentBooking = booking;
 
-  function markPaid() {
-    setPaymentStatus(currentPayment.id, "paid", method);
-    setPaymentStatusState("paid");
-    setStatus("Payment completed. Booking is now confirmed.");
+  async function markPaid() {
+    setStatus("Processing payment...");
+    const supabase = createSupabaseBrowserClient();
+    const { error } = await (supabase.from("transactions") as any)
+      .update({ payment_status: "paid", payment_method: method })
+      .eq("id", currentPayment.id);
+
+    if (error) {
+      setStatus(`Error: ${error.message}`);
+    } else {
+      setPaymentStatusState("paid");
+      setStatus("Payment completed. Booking is now confirmed.");
+    }
   }
 
-  function requestRefund() {
-    setPaymentStatus(currentPayment.id, "refund_requested", currentPayment.method);
-    setPaymentStatusState("refund_requested");
-    setStatus("Refund requested. Admin can review this request from the dashboard.");
+  async function requestRefund() {
+    setStatus("Requesting refund...");
+    const supabase = createSupabaseBrowserClient();
+    const { error } = await (supabase.from("transactions") as any)
+      .update({ payment_status: "refund_requested", payment_method: method })
+      .eq("id", currentPayment.id);
+
+    if (error) {
+      setStatus(`Error: ${error.message}`);
+    } else {
+      setPaymentStatusState("refund_requested");
+      setStatus("Refund requested. Admin can review this request from the dashboard.");
+    }
   }
 
   return (
@@ -92,7 +139,7 @@ export default function PaymentPage({ params }: { params: Promise<{ paymentId: s
             </div>
             <h1 className="mt-4 font-[family-name:var(--font-display)] text-4xl text-[color:var(--foreground)] sm:text-5xl">Complete payment</h1>
             <p className="mt-3 text-sm leading-6 text-[color:var(--muted)] sm:text-base">
-              {currentBooking.listingTitle} · {currentBooking.checkInDate} to {currentBooking.checkOutDate}
+              {currentPayment.listingTitle} · {currentPayment.checkInDate} to {currentPayment.checkOutDate}
             </p>
             <details className="mt-5 rounded-[1.35rem] border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-950 dark:text-slate-50">
@@ -144,11 +191,11 @@ export default function PaymentPage({ params }: { params: Promise<{ paymentId: s
             ) : null}
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Button onClick={markPaid} className="w-full sm:w-auto">
+              <Button onClick={() => void markPaid()} className="w-full sm:w-auto">
                 Pay now
                 <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button variant="outline" onClick={requestRefund} className="w-full sm:w-auto">
+              <Button variant="outline" onClick={() => void requestRefund()} className="w-full sm:w-auto">
                 Request refund
               </Button>
             </div>

@@ -4,7 +4,7 @@ import { BadgeCheck, CalendarDays, MessageSquareText, PhoneCall, TimerReset } fr
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { HostContactChannel, PublicHostProfile } from "@/lib/local-data";
+import type { HostContactChannel, PublicHostProfile } from "@/types/models";
 import { canContactOwner } from "@/lib/auth/permissions";
 import { loadSupabaseSessionProfile, readLocalSession } from "@/lib/session";
 import { useEffect, useState } from "react";
@@ -66,8 +66,12 @@ export function HostProfileCard({
   return (
     <Card className="rounded-[1.75rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-5 sm:p-6">
       <div className="flex items-start gap-4">
-        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]">
-          <Image src={host.profilePhoto} alt={host.displayName} fill unoptimized sizes="56px" className="object-cover" />
+        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]">
+          {host.profilePhoto ? (
+            <Image src={host.profilePhoto} alt={host.displayName} fill unoptimized sizes="56px" className="object-cover" />
+          ) : (
+            <span className="text-xl font-semibold text-slate-500">{host.displayName.charAt(0).toUpperCase()}</span>
+          )}
         </div>
         <div className="min-w-0">
           <p className="truncate text-lg font-semibold text-slate-950 dark:text-slate-50">{host.displayName}</p>

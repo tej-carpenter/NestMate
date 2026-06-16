@@ -6,8 +6,10 @@ import { use, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import ListingPageTemplate from "@/components/listings/listing-page-template";
-import { deleteListingById, getCurrentSessionUser, getHostProfileForListing, getListingBySlug, getListingInventory, getPublicListingBySlug, type ListingActor, type ListingInventoryItem, type PublicHostProfile } from "@/lib/local-data";
-import { getListingById } from "@/lib/listing-queries"
+import { getListingById, getActiveListings } from "@/lib/listing-queries";
+import { loadSupabaseSessionProfile } from "@/lib/session";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { ListingActor, ListingInventoryItem, PublicHostProfile } from "@/types/models";
 
 function ListingDetailLoading() {
   return (
@@ -30,29 +32,73 @@ export default function ListingDetailPage({ params }: { params: Promise<{ slug: 
   const [currentUser, setCurrentUser] = useState<ListingActor | null>(null);
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
-      const nextInventory = getListingInventory();
-      const sessionUser = getCurrentSessionUser();
-      const publicListing = getPublicListingBySlug(resolvedParams.slug);
-      const nextListing = publicListing ?? getListingBySlug(resolvedParams.slug);
-      // const nextListing = await getListingById(resolvedParams.slug);
+    async function fetchData() {
+      const supabase = createSupabaseBrowserClient();
+      const slug = resolvedParams.slug;
+      
+      const sessionUser = await loadSupabaseSessionProfile();
+      const nextListing = await getListingById(slug);
+      const allListings = await getActiveListings() as ListingInventoryItem[];
 
-      setInventory(nextInventory);
-      setListing(nextListing);
-      setCurrentUser(sessionUser);
-      setHostProfile(nextListing && (publicListing || (sessionUser && (sessionUser.role === "admin" || sessionUser.id === nextListing.ownerId))) ? getHostProfileForListing(nextListing) : null);
+      let nextHostProfile: PublicHostProfile | null = null;
+      if (nextListing) {
+        const { data: hostData } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", nextListing.ownerId)
+          .maybeSingle();
+
+        if (hostData) {
+          nextHostProfile = {
+            id: String(hostData.id),
+            verificationSubjectId: null,
+            displayName: String(hostData.name || "Host"),
+            profilePhoto: String(hostData.avatar_url || ""),
+            verified: hostData.verification_status === "verified",
+            joinedAt: hostData.created_at ? new Date(String(hostData.created_at)).getTime() : Date.now(),
+            responsePreference: {
+              preferredChannel: "in_app_chat",
+              responseWindow: "within_1_hour",
+              availabilityNote: "Usually replies quickly",
+            },
+            contactOptions: ["in_app_chat"],
+            activeListings: allListings
+              .filter((l) => l.ownerId === hostData.id)
+              .map((l) => ({
+                id: l.id,
+                slug: l.slug,
+                title: l.title,
+                city: l.city,
+                locality: l.locality,
+                thumbnail: l.thumbnail,
+                verified: l.verified,
+              })),
+          };
+        }
+      }
+
+      setInventory(allListings);
+      setListing(nextListing as ListingInventoryItem);
+      setCurrentUser(sessionUser ? {
+        id: sessionUser.userId,
+        phone: sessionUser.phone,
+        role: sessionUser.role,
+      } : null);
+      setHostProfile(nextHostProfile);
       setMounted(true);
-    }, 0);
-
-    return () => window.clearTimeout(handle);
+    }
+    
+    fetchData();
   }, [resolvedParams.slug]);
 
-  function handleDeleteListing(listingId: string) {
+  async function handleDeleteListing(listingId: string) {
     if (!window.confirm("Delete this listing? This action cannot be undone.")) {
       return;
     }
 
-    deleteListingById(listingId);
+    const supabase = createSupabaseBrowserClient();
+    await (supabase.from("listings") as any).delete().eq("id", listingId);
+
     setListing(null);
     router.push("/search");
   }

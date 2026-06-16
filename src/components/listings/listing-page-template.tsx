@@ -10,7 +10,8 @@ import { resolveGoogleMapsUrl } from "@/lib/google-maps";
 import ReviewSection from "@/components/listings/review-section";
 import { HostProfileCard } from "@/components/host/host-profile-card";
 import { formatPricePeriod } from "@/lib/pricing";
-import { canManageListing, type ListingActor, type ListingInventoryItem, type PublicHostProfile } from "@/lib/local-data";
+import { canEditListing } from "@/lib/auth/permissions";
+import type { ListingActor, ListingInventoryItem, PublicHostProfile } from "@/types/models";
 import { getListingStatusLabel, isPublicListingStatus } from "@/lib/listings/status";
 
 const cityLandmarks: Record<string, { name: string; distance: string; note: string }[]> = {
@@ -104,7 +105,7 @@ export default function ListingPageTemplate({
   const availabilityLabel = formatAvailability(listing);
   const hasResidentFeedback = (listing.reviewCount ?? 0) > 0;
   const relatedImage = heroImages[1] ?? listing;
-  const canEditListing = canManageListing(listing, currentUser);
+  const canManage = canEditListing(currentUser, listing);
   const isBookable = isPublicListingStatus(listing.status, listing.moderationState);
   const googleMapsUrl = resolveGoogleMapsUrl(
     { title: listing.title, locality: listing.locality, city: listing.city },
@@ -407,7 +408,7 @@ export default function ListingPageTemplate({
 
             {hostProfile ? <HostProfileCard host={hostProfile} currentListingSlug={listing.slug} compact /> : null}
 
-            {canEditListing ? (
+            {canManage ? (
               <div className="mt-4 rounded-[1.35rem] border border-amber-200/70 bg-amber-50 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-900/80 dark:text-amber-100/80">Listing management</p>
                 <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">This property belongs to your account, so you can edit it or remove it from the marketplace.</p>

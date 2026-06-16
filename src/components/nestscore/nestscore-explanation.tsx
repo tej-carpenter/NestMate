@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BadgeCheck, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { getPublicListingInventory, getReviews } from "@/lib/local-data";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function NestScoreExplanation() {
   const [reviewCount, setReviewCount] = useState(0);
@@ -13,18 +13,26 @@ export function NestScoreExplanation() {
   const [listingCount, setListingCount] = useState(0);
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
-      const listings = getPublicListingInventory();
-      const reviews = getReviews();
-      const reviewedIds = new Set(reviews.map((review) => review.listingId));
+    async function fetchData() {
+      const supabase = createSupabaseBrowserClient();
+      
+      const [listingsResponse, reviewsResponse] = await Promise.all([
+        supabase.from("listings").select("id").eq("status", "approved"),
+        supabase.from("reviews").select("listing_id")
+      ]);
+
+      const listings = listingsResponse.data || [];
+      const reviews = reviewsResponse.data || [];
+
+      const reviewedIds = new Set(reviews.map((review) => review.listing_id));
 
       setListingCount(listings.length);
       setReviewCount(reviews.length);
       setReviewedListings(reviewedIds.size);
       setAwaitingFeedbackListings(listings.filter((listing) => !reviewedIds.has(listing.id)).length);
-    }, 0);
+    }
 
-    return () => window.clearTimeout(handle);
+    fetchData();
   }, []);
 
   const overallState = useMemo(() => {

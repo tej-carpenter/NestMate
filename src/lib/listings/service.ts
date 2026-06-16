@@ -11,8 +11,8 @@ import {
   renewExpiredListingById,
   suspendListingById,
   restoreListingById,
-  type ListingInventoryItem,
 } from "@/lib/local-data";
+import type { ListingInventoryItem } from "@/types/models";
 
 export type { ListingInventoryItem };
 

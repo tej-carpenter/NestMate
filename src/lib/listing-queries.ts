@@ -137,11 +137,7 @@ export async function getListingById(id: string) {
     return null;
   }
 
-  const listing = await getListingById(
-  "09010f37-8a17-4c03-a6c9-b446bf240205"
-);
 
-console.log(listing);
 
   const spaceType =
     data.space_type === "room"

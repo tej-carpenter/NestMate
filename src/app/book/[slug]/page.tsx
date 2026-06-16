@@ -8,17 +8,16 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatRupee } from "@/lib/format";
-import { createBooking, createPaymentForBooking } from "@/lib/local-data";
-import { getListingBySlug } from "@/lib/local-data";
 import { formatPricePeriod } from "@/lib/pricing";
 import { loadSupabaseSessionProfile, readLocalSession } from "@/lib/session";
 import { isAuthenticatedSession } from "@/lib/auth/permissions";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function BookingPage({ params }: { params: Promise<{ slug: string }> | { slug: string } }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [session, setSession] = useState<ReturnType<typeof readLocalSession>>(null);
-  const [listing, setListing] = useState<ReturnType<typeof getListingBySlug>>(null);
+  const [listing, setListing] = useState<any>(null);
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
   const [guestCount, setGuestCount] = useState(1);
@@ -30,14 +29,53 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
   const resolvedParams = use(params as Promise<{ slug: string }>);
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
-      setSession(readLocalSession());
-      void loadSupabaseSessionProfile().then(setSession).catch(() => setSession(readLocalSession()));
-      setListing(getListingBySlug(resolvedParams.slug));
-      setMounted(true);
-    }, 0);
+    let active = true;
 
-    return () => window.clearTimeout(handle);
+    async function loadData() {
+      let currentSession = readLocalSession();
+      setSession(currentSession);
+
+      try {
+        currentSession = await loadSupabaseSessionProfile();
+        if (active) setSession(currentSession);
+      } catch {
+        if (active) setSession(readLocalSession());
+      }
+
+      const supabase = createSupabaseBrowserClient();
+      const { data: listingData } = await supabase
+        .from("listings")
+        .select(`
+          id, host_id, title, description, city, locality, space_type, price, price_type, nestscore
+        `)
+        .eq("id", resolvedParams.slug)
+        .maybeSingle();
+
+      if (active && listingData) {
+        setListing({
+          id: listingData.id,
+          hostId: listingData.host_id,
+          title: listingData.title,
+          description: listingData.description,
+          city: listingData.city,
+          locality: listingData.locality,
+          kind: listingData.space_type,
+          price: Number(listingData.price),
+          priceType: listingData.price_type,
+          nestscore: listingData.nestscore ? Number(listingData.nestscore) : 0,
+          reviewCount: listingData.nestscore ? 1 : 0, // Mock review count for NestScore UI
+          availableUnits: 1, // Defaulting to 1 since schema doesn't track inventory currently
+          totalUnits: 1,
+        });
+      }
+      if (active) setMounted(true);
+    }
+
+    loadData();
+
+    return () => {
+      active = false;
+    };
   }, [resolvedParams.slug]);
 
   const moveInTotal = listing ? listing.price * 1 : 0;
@@ -69,11 +107,10 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
 
   const selectedListing = listing;
   const isAuthenticated = isAuthenticatedSession(session);
-  const userContact = session?.phone || session?.email || "";
   const hasResidentFeedback = (selectedListing.reviewCount ?? 0) > 0;
   const hasAvailabilityData = selectedListing.totalUnits > 0 && selectedListing.availableUnits > 0;
 
-  function handleCreateBooking(event: React.FormEvent<HTMLFormElement>) {
+  async function handleCreateBooking(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!isAuthenticated || !session) {
@@ -90,28 +127,44 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
     setStatus(null);
 
     try {
-      const booking = createBooking({
-        userPhone: userContact,
-        listingSlug: selectedListing.slug,
-        quantity,
-        checkInDate,
-        checkOutDate,
-        guestCount,
-        notes,
-      });
+      const supabase = createSupabaseBrowserClient();
 
-      console.log("BOOKING CREATED", booking);
+      const { data: booking, error: bookingError } = await (supabase.from("bookings") as any)
+        .insert({
+          listing_id: selectedListing.id,
+          guest_id: session.userId,
+          host_id: selectedListing.hostId,
+          move_in_date: checkInDate,
+          move_out_date: checkOutDate,
+          rent_amount: selectedListing.price * quantity,
+          deposit_amount: 0,
+          booking_status: "confirmed",
+          payment_status: "pending",
+          notes: notes,
+          quantity: quantity,
+          guest_count: guestCount,
+        })
+        .select()
+        .single();
 
-      const payment = createPaymentForBooking({
-        bookingId: booking.id,
-        userPhone: userContact,
-        amount: booking.amount,
-      });
+      if (bookingError) throw bookingError;
 
-      console.log("PAYMENT CREATED", payment);
+      const { data: transaction, error: transactionError } = await (supabase.from("transactions") as any)
+        .insert({
+          user_id: session.userId,
+          booking_id: booking.id,
+          amount: booking.rent_amount,
+          transaction_type: "payment",
+          payment_status: "pending",
+          description: `Payment for booking ${booking.id}`,
+        })
+        .select()
+        .single();
+
+      if (transactionError) throw transactionError;
 
       setStatus("Booking created. Redirecting to payment...");
-      router.push(`/payment/${payment.id}`);
+      router.push(`/payment/${transaction.id}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Unable to create booking right now.");
     } finally {
@@ -136,7 +189,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
             </div>
             <h1 className="mt-4 font-[family-name:var(--font-display)] text-3xl text-[color:var(--foreground)] sm:text-5xl">{selectedListing.title}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--muted)] sm:text-base sm:leading-7">
-              {selectedListing.locality}, {selectedListing.city} · {selectedListing.kind.toUpperCase()} · {hasResidentFeedback ? `NestScore ${selectedListing.nestscore.toFixed(1)}` : "Awaiting resident feedback"}
+              {selectedListing.locality}, {selectedListing.city} · {String(selectedListing.kind).toUpperCase()} · {hasResidentFeedback ? `NestScore ${selectedListing.nestscore.toFixed(1)}` : "Awaiting resident feedback"}
             </p>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-[color:var(--muted)] sm:text-base">{selectedListing.description}</p>
 
@@ -160,7 +213,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
             </details>
           </div>
 
-          <form id="booking-form" className="grid gap-4 p-5 sm:p-8 sm:pt-7 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]" onSubmit={handleCreateBooking}>
+          <form id="booking-form" className="grid gap-4 p-5 sm:p-8 sm:pt-7 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]" onSubmit={(e) => { void handleCreateBooking(e); }}>
             {!isAuthenticated ? (
               <div className="sm:col-span-2">
                 <Card className="p-4 mb-4">
@@ -225,7 +278,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
         <Card className="p-6 sm:p-8 lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-[1.6rem] border border-[color:var(--border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,250,252,0.96))] p-5 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(15,23,42,0.88))]">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Booking summary</p>
-            <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-slate-50">{formatRupee(selectedListing.price)}</p>
+            <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-slate-50">{formatRupee(selectedListing.price * quantity)}</p>
             <p className="mt-1 text-sm text-[color:var(--muted)]">Pricing {formatPricePeriod(selectedListing.priceType)} · Units selected {quantity}</p>
             <div className="mt-4 flex items-center justify-between rounded-[1.25rem] bg-teal-50 px-4 py-3 text-sm text-teal-950 dark:bg-teal-500/15 dark:text-teal-50">
               <span className="font-medium">Resident feedback</span>

@@ -5,13 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { loadSupabaseSessionProfile, readLocalSession } from "@/lib/session";
-import { createReview, getReviews } from "@/lib/local-data";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type Review = {
   id: string;
   listingId: string;
-  listingSlug: string;
-  userPhone: string;
   reviewerName: string;
   rating: number;
   text: string | null;
@@ -26,16 +24,47 @@ export default function ReviewSection({ listingId, listingSlug }: { listingId: s
   const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
-      setSession(readLocalSession());
-      void loadSupabaseSessionProfile().then(setSession).catch(() => setSession(readLocalSession()));
-      setReviews(getReviews(listingId));
-    }, 0);
+    async function fetchReviews() {
+      const currentSession = readLocalSession();
+      setSession(currentSession);
+      try {
+        const profile = await loadSupabaseSessionProfile();
+        if (profile) setSession(profile);
+      } catch (err) {
+        // ignore
+      }
 
-    return () => window.clearTimeout(handle);
+      const supabase = createSupabaseBrowserClient();
+      const { data } = await (supabase.from("reviews") as any)
+        .select(`
+          id, 
+          listing_id, 
+          overall_score, 
+          review_text, 
+          created_at,
+          users:guest_id(name)
+        `)
+        .eq("listing_id", listingId)
+        .order("created_at", { ascending: false });
+
+      if (data) {
+        setReviews(
+          data.map((r: any) => ({
+            id: r.id,
+            listingId: r.listing_id,
+            reviewerName: r.users?.name ?? "Guest",
+            rating: Number(r.overall_score ?? 5),
+            text: r.review_text,
+            createdAt: new Date(r.created_at).getTime(),
+          }))
+        );
+      }
+    }
+
+    fetchReviews();
   }, [listingId]);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!session) {
       setStatus("Please login to submit a review.");
@@ -43,12 +72,40 @@ export default function ReviewSection({ listingId, listingSlug }: { listingId: s
     }
 
     try {
-      const contact = session.phone || session.email;
-      const rec = createReview({ listingId, listingSlug, userPhone: contact, reviewerName: session.name || contact, rating, text });
-      setReviews((s) => [rec, ...s]);
-      setText("");
-      setRating(5);
-      setStatus("Review submitted");
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await (supabase.from("reviews") as any)
+        .insert({
+          listing_id: listingId,
+          guest_id: session.userId, // session.userId maps to users table id
+          overall_score: rating,
+          review_text: text,
+          status: "published",
+        })
+        .select(`
+          id, 
+          listing_id, 
+          overall_score, 
+          review_text, 
+          created_at
+        `)
+        .single();
+
+      if (error) throw new Error(error.message);
+
+      if (data) {
+        const newReview: Review = {
+          id: data.id,
+          listingId: data.listing_id,
+          reviewerName: session.name || "You",
+          rating: Number(data.overall_score ?? 5),
+          text: data.review_text,
+          createdAt: data.created_at ? new Date(data.created_at).getTime() : Date.now(),
+        };
+        setReviews((s) => [newReview, ...s]);
+        setText("");
+        setRating(5);
+        setStatus("Review submitted");
+      }
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err));
     }

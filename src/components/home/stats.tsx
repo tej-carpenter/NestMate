@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { getBookings, getPublicListingInventory } from "@/lib/local-data";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function Stats() {
   const [verifiedCount, setVerifiedCount] = useState(0);
@@ -10,15 +10,29 @@ export default function Stats() {
   const [bookingCount, setBookingCount] = useState(0);
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
-      const listings = getPublicListingInventory();
-      setVerifiedCount(listings.filter((l) => l.verified).length);
-      setCityCount(new Set(listings.map((l) => l.city)).size);
-      const bookings = getBookings();
-      setBookingCount(bookings.length);
-    }, 0);
+    async function fetchStats() {
+      const supabase = createSupabaseBrowserClient();
 
-    return () => window.clearTimeout(handle);
+      const { data: listings } = await supabase
+        .from("listings")
+        .select("city")
+        .eq("status", "active");
+
+      if (listings) {
+        setVerifiedCount(listings.length); // Assuming all active listings are verified in DB
+        setCityCount(new Set(listings.map((l) => l.city)).size);
+      }
+
+      const { data: bookings } = await supabase
+        .from("bookings")
+        .select("id");
+
+      if (bookings) {
+        setBookingCount(bookings.length);
+      }
+    }
+
+    fetchStats();
   }, []);
 
   const stats = [
