@@ -10,7 +10,7 @@ import { isAdminRole } from "@/lib/auth/roles";
 const baseItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/search", label: "Search", icon: Search },
-  { href: "/map", label: "Map", icon: MapPinned },
+  // { href: "/map", label: "Map", icon: MapPinned },
   { href: "/host/listings/new", label: "List", icon: PlusCircle },
 ] as const;
 

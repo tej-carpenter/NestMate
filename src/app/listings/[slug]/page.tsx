@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import ListingPageTemplate from "@/components/listings/listing-page-template";
 import { deleteListingById, getCurrentSessionUser, getHostProfileForListing, getListingBySlug, getListingInventory, getPublicListingBySlug, type ListingActor, type ListingInventoryItem, type PublicHostProfile } from "@/lib/local-data";
+import { getListingById } from "@/lib/listing-queries"
 
 function ListingDetailLoading() {
   return (
@@ -34,6 +35,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ slug: 
       const sessionUser = getCurrentSessionUser();
       const publicListing = getPublicListingBySlug(resolvedParams.slug);
       const nextListing = publicListing ?? getListingBySlug(resolvedParams.slug);
+      // const nextListing = await getListingById(resolvedParams.slug);
 
       setInventory(nextInventory);
       setListing(nextListing);

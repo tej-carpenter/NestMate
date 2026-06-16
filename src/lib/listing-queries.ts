@@ -1,14 +1,16 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { buildListingThumbnail } from "@/lib/listing-thumbnail";
+import { ListingRow } from "@/types/database";
 
 export async function getActiveListings() {
   const supabase = createSupabaseBrowserClient();
 
   const { data, error } = await supabase
-    .from("listings")
+  // const result = await supabase
+    .from<ListingRow>("listings")
     .select("*")
     .eq("status", "active");
-
+// console.log(result);
   console.log("SUPABASE LISTINGS:", data);
   console.log("SUPABASE ERROR:", error);
 
@@ -116,4 +118,117 @@ export async function getActiveListings() {
       hostUserPhone: undefined,
     };
   });
+}
+
+export async function getListingById(id: string) {
+  const supabase = createSupabaseBrowserClient();
+
+  const { data, error } = await supabase
+    .from<ListingRow>("listings")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const listing = await getListingById(
+  "09010f37-8a17-4c03-a6c9-b446bf240205"
+);
+
+console.log(listing);
+
+  const spaceType =
+    data.space_type === "room"
+      ? "room"
+      : data.space_type === "bed"
+        ? "bed"
+        : data.space_type === "apartment"
+          ? "apartment"
+          : data.space_type === "lodge"
+            ? "lodge"
+            : "pg";
+
+  return {
+    id: data.id,
+    slug: data.id,
+    ownerId: data.host_id,
+    createdAt: Date.now(),
+
+    title: data.title,
+    city: data.city,
+    locality: data.locality,
+    address: data.address ?? "",
+
+    googleMapsUrl: undefined,
+
+    latitude: data.latitude,
+    longitude: data.longitude,
+
+    genderPreference:
+      data.gender_preference === "male"
+        ? "male"
+        : data.gender_preference === "female"
+          ? "female"
+          : "any",
+
+    price: Number(data.price),
+
+    priceType:
+      data.price_type === "daily"
+        ? "daily"
+        : data.price_type === "bedspace"
+          ? "bedspace"
+          : "monthly",
+
+    spaceType,
+
+    nestscore: Number(data.nestscore ?? 0),
+
+    verified: false,
+    reviewCount: 0,
+
+    status: "approved",
+    moderationState: "active",
+
+    rejectionReason: null,
+    suspensionReason: null,
+
+    approvedAt: null,
+    reviewedAt: null,
+    expiresAt: null,
+    archivedAt: null,
+
+    description: data.description ?? "",
+
+    amenities: data.amenities ?? [],
+
+    mapPosition: {
+      left: "50%",
+      top: "50%",
+    },
+
+    thumbnail: buildListingThumbnail({
+      title: data.title,
+      city: data.city,
+      locality: data.locality,
+      spaceType,
+      verified: false,
+      nestscore: Number(data.nestscore ?? 0),
+      status: "approved",
+      reviewCount: 0,
+    }),
+
+    kind: spaceType,
+
+    totalUnits: 1,
+    availableUnits: 1,
+
+    hostUserPhone: undefined,
+  };
 }
