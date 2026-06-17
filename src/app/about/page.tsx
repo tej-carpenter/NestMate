@@ -66,22 +66,22 @@ export default function AboutPage() {
           {/* Founder 1 */}
           <div className="flex flex-col items-center gap-4">
             <div className="h-32 w-32 overflow-hidden rounded-full bg-slate-100 ring-4 ring-slate-100 dark:bg-slate-800 dark:ring-slate-800">
-              <img src="https://avatars.githubusercontent.com/u/108168391?v=4" alt="Founder 1" className="h-full w-full object-cover" />
+              <img src="https://avatars.githubusercontent.com/u/108168391?v=4" alt="TPC" className="h-full w-full object-cover" />
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-950 dark:text-slate-50">Tej</h3>
               <p className="text-sm text-teal-700 dark:text-teal-400">Co-founder & Developer</p>
             </div>
             <div className="flex gap-4">
-              <a href="#" className="text-slate-400 transition hover:text-slate-950 dark:hover:text-slate-50"><Twitter className="h-5 w-5" /></a>
-              <a href="#" className="text-slate-400 transition hover:text-slate-950 dark:hover:text-slate-50"><Linkedin className="h-5 w-5" /></a>
+              <a href="https://www.instagram.com/tejprakash.carpenter/" className="text-slate-400 transition hover:text-slate-950 dark:hover:text-slate-50"><Instagram className="h-5 w-5" /></a>
+              <a href="https://www.linkedin.com/in/tej-prakash-carpenter/" className="text-slate-400 transition hover:text-slate-950 dark:hover:text-slate-50"><Linkedin className="h-5 w-5" /></a>
             </div>
           </div>
 
           {/* Founder 2 */}
           <div className="flex flex-col items-center gap-4">
             <div className="h-32 w-32 overflow-hidden rounded-full bg-slate-100 ring-4 ring-slate-100 dark:bg-slate-800 dark:ring-slate-800">
-              <img src="https://ui-avatars.com/api/?name=Founder+Two&background=0F766E&color=fff&size=256" alt="Founder 2" className="h-full w-full object-cover" />
+              <img src="https://ui-avatars.com/api/?name=Rishabh+Yadav&background=0F766E&color=fff&size=256" alt="Rishabh Yadav" className="h-full w-full object-cover" />
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-950 dark:text-slate-50">Rishabh</h3>
@@ -89,7 +89,7 @@ export default function AboutPage() {
             </div>
             <div className="flex gap-4">
               <a href="#" className="text-slate-400 transition hover:text-slate-950 dark:hover:text-slate-50"><Twitter className="h-5 w-5" /></a>
-              <a href="#" className="text-slate-400 transition hover:text-slate-950 dark:hover:text-slate-50"><Linkedin className="h-5 w-5" /></a>
+              <a href="https://www.instagram.com/rishabh_yadav333/" className="text-slate-400 transition hover:text-slate-950 dark:hover:text-slate-50"><Instagram className="h-5 w-5" /></a>
             </div>
           </div>
         </div>
