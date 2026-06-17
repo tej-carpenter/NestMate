@@ -2,28 +2,61 @@ import Link from "next/link";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-[color:var(--border)] bg-[color:var(--surface)] pb-24 md:pb-0">
-      <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 text-sm text-slate-600 dark:text-slate-300 sm:px-6 lg:grid-cols-[1.35fr_0.825fr_0.825fr] lg:px-8">
-        <div>
-          <p className="font-[family-name:var(--font-display)] text-lg font-semibold text-slate-950 dark:text-slate-50">Nestmate</p>
-          <p className="mt-3 max-w-lg leading-7">
-            Accommodation infrastructure for India: trust, bookings, payments, messaging, and admin tooling built on Next.js and Supabase.
-          </p>
-        </div>
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-950 dark:text-slate-50">Explore</p>
-          <div className="grid gap-2 sm:grid-cols-[repeat(auto-fit,minmax(140px,1fr))] lg:grid-cols-1">
-            <Link className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 transition hover:border-teal-500/40 hover:text-teal-900 dark:hover:text-teal-100" href="/search">Search</Link>
-            <Link className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 transition hover:border-teal-500/40 hover:text-teal-900 dark:hover:text-teal-100" href="/about">About Us</Link>
+    <footer className="border-t border-[color:var(--border)] bg-black/5 pb-24 dark:bg-white/5 md:pb-0">
+      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="grid gap-12 lg:grid-cols-[1.5fr_1fr_1fr]">
+          <div>
+            <div className="flex items-center gap-2 font-[family-name:var(--font-display)] text-lg font-bold tracking-tight text-[color:var(--foreground)]">
+              <span className="flex h-7 w-7 items-center justify-center rounded-[8px] bg-[color:var(--brand-strong)] text-xs font-extrabold text-white shadow-sm dark:text-black">
+                N
+              </span>
+              <span>Nestmate</span>
+            </div>
+            <p className="mt-4 max-w-sm text-[15px] leading-7 text-[color:var(--muted)]">
+              Premium accommodation infrastructure for India. Verified stays, seamless bookings, and a trust-first experience.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[color:var(--foreground)]">Explore</h3>
+            <ul className="mt-6 space-y-4">
+              <li>
+                <Link className="text-[15px] font-medium text-[color:var(--muted)] transition-colors hover:text-[color:var(--foreground)]" href="/search">Find a stay</Link>
+              </li>
+              <li>
+                <Link className="text-[15px] font-medium text-[color:var(--muted)] transition-colors hover:text-[color:var(--foreground)]" href="/host/dashboard">Host your property</Link>
+              </li>
+              <li>
+                <Link className="text-[15px] font-medium text-[color:var(--muted)] transition-colors hover:text-[color:var(--foreground)]" href="/about">About Us</Link>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-[color:var(--foreground)]">Connect</h3>
+            <ul className="mt-6 space-y-4">
+              <li>
+                <a className="text-[15px] font-medium text-[color:var(--muted)] transition-colors hover:text-[color:var(--foreground)]" href="https://www.instagram.com/nestmateofficial/" target="_blank" rel="noopener noreferrer">Instagram</a>
+              </li>
+              <li>
+                <a className="text-[15px] font-medium text-[color:var(--muted)] transition-colors hover:text-[color:var(--foreground)]" href="#" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+              </li>
+              <li>
+                <a className="text-[15px] font-medium text-[color:var(--muted)] transition-colors hover:text-[color:var(--foreground)]" href="#" target="_blank" rel="noopener noreferrer">Twitter / X</a>
+              </li>
+            </ul>
           </div>
         </div>
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-950 dark:text-slate-50">Social</p>
-          <div className="grid gap-2 sm:grid-cols-[repeat(auto-fit,minmax(140px,1fr))] lg:grid-cols-1">
-            <a className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 transition hover:border-teal-500/40 hover:text-teal-900 dark:hover:text-teal-100" href="https://www.instagram.com/nestmateofficial/" target="_blank" rel="noopener noreferrer">Instagram</a>
-            <a className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 transition hover:border-teal-500/40 hover:text-teal-900 dark:hover:text-teal-100" href="#" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-            <a className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 transition hover:border-teal-500/40 hover:text-teal-900 dark:hover:text-teal-100" href="#" target="_blank" rel="noopener noreferrer">X / Twitter</a>
-            <a className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 transition hover:border-teal-500/40 hover:text-teal-900 dark:hover:text-teal-100" href="#" target="_blank" rel="noopener noreferrer">YouTube</a>
+
+        <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-[color:var(--border)] pt-8 text-[13px] text-[color:var(--muted)] sm:flex-row">
+          <p>© {new Date().getFullYear()} Nestmate Inc. All rights reserved.</p>
+          <div className="flex flex-wrap justify-center sm:justify-end gap-x-6 gap-y-2">
+            <Link href="/privacy" className="hover:text-[color:var(--foreground)]">Privacy</Link>
+            <Link href="/terms" className="hover:text-[color:var(--foreground)]">Terms</Link>
+            <Link href="/refund" className="hover:text-[color:var(--foreground)]">Refund Policy</Link>
+            <Link href="/host-terms" className="hover:text-[color:var(--foreground)]">Host Terms</Link>
+            <Link href="/community" className="hover:text-[color:var(--foreground)]">Community</Link>
+            <Link href="/safety" className="hover:text-[color:var(--foreground)]">Safety</Link>
           </div>
         </div>
       </div>

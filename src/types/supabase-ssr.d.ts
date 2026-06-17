@@ -31,6 +31,7 @@ declare module "@supabase/ssr" {
     signOut(): BasicAuthResponse;
     resetPasswordForEmail(email: string, options?: { redirectTo?: string }): BasicAuthResponse;
     getSession(): Promise<{ data: { session: AuthSession }; error: SupabaseError }>;
+    getUser(): Promise<{ data: { user: AuthUser | null }; error: SupabaseError }>;
     onAuthStateChange(callback: (event: string, session: AuthSession) => void): {
       data: { subscription: { unsubscribe(): void } };
     };

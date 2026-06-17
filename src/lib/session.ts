@@ -165,17 +165,14 @@ export async function upsertSupabaseUserProfile(input: AuthProfileInput) {
 
 export async function loadSupabaseSessionProfile() {
   const supabase = createSupabaseBrowserClient();
-  const { data, error } = await supabase.auth.getSession();
+  const { data, error } = await supabase.auth.getUser();
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const user = data.session?.user;
-  if (!user?.id || !user.email) {
+  if (error || !data.user) {
     clearLocalSession();
     return null;
   }
+
+  const user = data.user;
 
   const profileResponse = await supabase
     .from<UserProfileRecord>("users")
@@ -193,8 +190,8 @@ export async function loadSupabaseSessionProfile() {
   if (!profile) {
     return upsertSupabaseUserProfile({
       userId: user.id,
-      email: user.email,
-      name: typeof metadata.name === "string" ? metadata.name : user.email,
+      email: user.email ?? "",
+      name: typeof metadata.name === "string" ? metadata.name : (user.email ?? ""),
       phone: typeof metadata.phone === "string" ? metadata.phone : "",
       role: normalizeRole(typeof metadata.role === "string" ? metadata.role : null) ?? "user",
     });
@@ -202,8 +199,8 @@ export async function loadSupabaseSessionProfile() {
 
   return cacheAuthProfile({
     userId: user.id,
-    email: profile?.email ?? user.email,
-    name: profile?.name ?? (typeof metadata.name === "string" ? metadata.name : user.email),
+    email: profile?.email ?? (user.email ?? ""),
+    name: profile?.name ?? (typeof metadata.name === "string" ? metadata.name : (user.email ?? "")),
     phone: profile?.phone ?? (typeof metadata.phone === "string" ? metadata.phone : ""),
     role: normalizeRole(profile?.role ?? null) ?? "user",
     signedInAt: Date.now(),

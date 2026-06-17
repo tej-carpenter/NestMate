@@ -118,118 +118,100 @@ export function ProfilePanel() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.22fr_0.78fr] lg:items-start">
-      <Card className="p-6 sm:p-8 lg:self-start">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-3">
-            <Badge className="bg-teal-50 text-teal-950 dark:bg-teal-500/15 dark:text-teal-100">Profile home</Badge>
-            <h1 className="font-[family-name:var(--font-display)] text-4xl text-slate-950 dark:text-slate-50">{session.name || "Nestmate user"}</h1>
-            <p className="max-w-xl text-base leading-7 text-slate-600 dark:text-slate-300">Account details, role access, and quick navigation live here for authenticated accounts.</p>
-          </div>
-          <Chip className="inline-flex items-center gap-2 px-4 py-2">
-            <BadgeCheck className="h-4 w-4 text-emerald-600" />
-            {getAccountLabel(session.role)} account
-          </Chip>
+    <div className="mx-auto w-full max-w-5xl">
+      <div className="mb-8">
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-[color:var(--foreground)] sm:text-4xl">Guest Dashboard</h1>
+        <p className="mt-2 text-[15px] text-[color:var(--muted)]">Manage your stays, profile, and payments.</p>
+        
+        {/* Simple Tab Navigation */}
+        <div className="mt-6 flex items-center gap-6 border-b border-[color:var(--border)]">
+          <Link href="/profile" className="border-b-2 border-[color:var(--foreground)] pb-3 text-[15px] font-semibold text-[color:var(--foreground)]">
+            Profile
+          </Link>
+          <Link href="/guest/bookings" className="pb-3 text-[15px] font-medium text-[color:var(--muted)] hover:text-[color:var(--foreground)] transition-colors">
+            My Bookings
+          </Link>
         </div>
+      </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
-          <div className="min-h-32 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
-            <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-              <UserRound className="h-4 w-4 text-teal-700 dark:text-teal-300" />
-              Name
+      <div className="grid gap-8 lg:grid-cols-[1.22fr_0.78fr] lg:items-start">
+        <Card className="overflow-hidden rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-sm sm:p-8 lg:self-start">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-2">
+              <p className="text-[14px] font-medium text-[color:var(--muted)]">Profile Details</p>
+              <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold text-[color:var(--foreground)]">{session.name || "Nestmate User"}</h1>
             </div>
-            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{session.name || "Not set"}</p>
+            <Chip className="inline-flex items-center gap-2 px-4 py-2 font-medium">
+              <BadgeCheck className="h-4 w-4 text-emerald-600" />
+              {getAccountLabel(session.role)}
+            </Chip>
           </div>
-          <div className="min-h-32 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
-            <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-              <Phone className="h-4 w-4 text-teal-700 dark:text-teal-300" />
-              Phone
-            </div>
-            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{session.phone || "Not added"}</p>
-          </div>
-          <div className="min-h-32 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
-            <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-              <BadgeCheck className="h-4 w-4 text-teal-700 dark:text-teal-300" />
-              Email
-            </div>
-            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{session.email ?? "Not added"}</p>
-          </div>
-          <div className="min-h-32 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
-            <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-              <BadgeCheck className="h-4 w-4 text-teal-700 dark:text-teal-300" />
-              Role
-            </div>
-            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{getAccountLabel(session.role)}</p>
-          </div>
-          <div className="min-h-32 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
-            <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-              <CalendarDays className="h-4 w-4 text-teal-700 dark:text-teal-300" />
-              Signed in
-            </div>
-            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">
-              {formatDateTime(session.signedInAt)}
-            </p>
-          </div>
-          <div className="min-h-32 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
-            <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-              <BadgeCheck className="h-4 w-4 text-teal-700 dark:text-teal-300" />
-              Login count
-            </div>
-            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{userStats.loginCount}</p>
-          </div>
-          <div className="min-h-32 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
-            <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-              <BadgeCheck className="h-4 w-4 text-teal-700 dark:text-teal-300" />
-              Total bookings
-            </div>
-            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{userStats.totalBookings}</p>
-          </div>
-          <div className="min-h-32 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
-            <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-              <BadgeCheck className="h-4 w-4 text-teal-700 dark:text-teal-300" />
-              Payment records
-            </div>
-            <p className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-50">{userStats.paymentRecords}</p>
-          </div>
-        </div>
-      </Card>
 
-      <Card className="p-6 sm:p-8 lg:sticky lg:top-24 lg:self-start">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-300">Quick access</p>
-        <div className="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-300">
-          <p>Jump straight into the place this role should land after login.</p>
-          <div className="rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4 text-slate-700 dark:text-slate-200">
-            {getPostLoginRoute(session.role)}
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-[20px] border border-[color:var(--border)] bg-[color:var(--surface)] p-5 shadow-sm">
+              <div className="flex items-center gap-3 text-[13px] font-semibold uppercase tracking-wider text-[color:var(--muted)]">
+                <UserRound className="h-4 w-4" />
+                Name
+              </div>
+              <p className="mt-3 text-[16px] font-semibold text-[color:var(--foreground)] truncate">{session.name || "Not set"}</p>
+            </div>
+            <div className="rounded-[20px] border border-[color:var(--border)] bg-[color:var(--surface)] p-5 shadow-sm">
+              <div className="flex items-center gap-3 text-[13px] font-semibold uppercase tracking-wider text-[color:var(--muted)]">
+                <Phone className="h-4 w-4" />
+                Phone
+              </div>
+              <p className="mt-3 text-[16px] font-semibold text-[color:var(--foreground)] truncate">{session.phone || "Not added"}</p>
+            </div>
+            <div className="rounded-[20px] border border-[color:var(--border)] bg-[color:var(--surface)] p-5 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-3 text-[13px] font-semibold uppercase tracking-wider text-[color:var(--muted)]">
+                <BadgeCheck className="h-4 w-4" />
+                Email
+              </div>
+              <p className="mt-3 text-[16px] font-semibold text-[color:var(--foreground)] break-all">{session.email ?? "Not added"}</p>
+            </div>
+            <div className="rounded-[20px] border border-[color:var(--border)] bg-[color:var(--surface)] p-5 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-3 text-[13px] font-semibold uppercase tracking-wider text-[color:var(--muted)]">
+                <CalendarDays className="h-4 w-4" />
+                Signed in
+              </div>
+              <p className="mt-3 text-[16px] font-semibold text-[color:var(--foreground)] truncate">
+                {formatDateTime(session.signedInAt)}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="mt-6 flex flex-col gap-3">
-          <Button asChild>
-            <Link href={getPostLoginRoute(session.role)}>Open dashboard</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/guest/bookings">Booking history</Link>
-          </Button>
+        </Card>
 
-          <Button asChild variant="outline">
-            <Link href="/profile/archived-listings">My Archived Listings</Link>
-          </Button>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              await signOutSession();
-              setSession(null);
-            }}
-          >
-            Sign out
-          </Button>
-        </div>
-        <div className="mt-8 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Recent logins</p>
-          <ul className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            <li>{formatDateTime(session.signedInAt)}</li>
-          </ul>
-        </div>
-      </Card>
+        <aside className="lg:sticky lg:top-8 lg:self-start">
+          <Card className="flex flex-col gap-6 overflow-hidden rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-sm sm:p-8">
+            <div>
+              <p className="text-[14px] font-medium text-[color:var(--muted)]">Account Actions</p>
+            </div>
+
+            <div className="flex flex-col gap-3 border-y border-[color:var(--border)] py-6">
+              <Button asChild className="h-12 w-full justify-start text-[15px]">
+                <Link href="/guest/bookings">View Bookings</Link>
+              </Button>
+              <Button asChild variant="outline" className="h-12 w-full justify-start text-[15px]">
+                <Link href="/search">Browse Listings</Link>
+              </Button>
+              <Button asChild variant="outline" className="h-12 w-full justify-start text-[15px]">
+                <Link href="/profile/archived-listings">Archived Listings</Link>
+              </Button>
+            </div>
+
+            <Button
+              variant="outline"
+              className="h-12 w-full text-[15px] font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+              onClick={async () => {
+                await signOutSession();
+                setSession(null);
+              }}
+            >
+              Sign out
+            </Button>
+          </Card>
+        </aside>
+      </div>
     </div>
   );
 }

@@ -75,20 +75,28 @@ function getAmenityMeta(amenity: string): AmenityMeta {
 }
 
 function formatAvailability(listing: ListingInventoryItem) {
-  if (!isPublicListingStatus(listing.status, listing.moderationState)) {
+  if (!isPublicListingStatus(listing.status, listing.moderationState) && listing.status !== "full") {
     return { label: listing.status === "rejected" ? "Rejected" : listing.status === "expired" ? "Expired" : "Unavailable", tone: "danger" as const, width: 0 };
   }
 
-  if (listing.totalUnits <= 0 || listing.availableUnits <= 0) {
+  if (listing.totalUnits <= 0) {
     return { label: "Availability not listed yet", tone: "muted" as const, width: 0 };
   }
 
   const occupied = Math.max(0, listing.totalUnits - listing.availableUnits);
   const width = listing.totalUnits > 0 ? Math.round((occupied / listing.totalUnits) * 100) : 0;
 
+  if (listing.availableUnits <= 0 || listing.status === "full") {
+    return { label: "Fully Occupied", tone: "danger" as const, width };
+  }
+
+  if (listing.availableUnits <= 3) {
+    return { label: `Only ${listing.availableUnits} left`, tone: "warn" as const, width };
+  }
+
   return {
-    label: `${listing.availableUnits} of ${listing.totalUnits} available`,
-    tone: listing.availableUnits <= Math.max(1, Math.ceil(listing.totalUnits * 0.25)) ? ("warn" as const) : ("success" as const),
+    label: "Available",
+    tone: "success" as const,
     width,
   };
 }
@@ -99,16 +107,11 @@ function ListingCard({ listing, compact = false, className }: ListingCardProps) 
   const [session, setSession] = useState<ReturnType<typeof readLocalSession>>(null);
   const thumbnail = listing.thumbnail ?? buildListingThumbnail(listing);
   const availability = useMemo(() => formatAvailability(listing), [listing]);
-  const amenityCount = compact ? 3 : 4;
-  const description = compact ? listing.description.slice(0, 96) : listing.description;
+  const amenityCount = compact ? 2 : 3;
   const reviewCount = typeof listing.reviewCount === "number" ? listing.reviewCount : 0;
   const genderPreference = listing.genderPreference ?? "any";
   const hasResidentFeedback = reviewCount > 0;
   const canSave = canSaveListing(session);
-  const googleMapsUrl = useMemo(
-    () => resolveGoogleMapsUrl({ title: listing.title, locality: listing.locality, city: listing.city }, listing.googleMapsUrl),
-    [listing.title, listing.locality, listing.city, listing.googleMapsUrl],
-  );
 
   useEffect(() => {
     const refreshSession = () => setSession(readLocalSession());
@@ -125,152 +128,103 @@ function ListingCard({ listing, compact = false, className }: ListingCardProps) 
   }, []);
 
   return (
-    <Card className={cn("group overflow-hidden border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm shadow-slate-900/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_-24px_rgba(15,23,42,0.28)] dark:hover:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.42)]", className)}>
-      <article className={cn("grid h-full", compact ? "grid-rows-[220px_auto]" : "grid-rows-[260px_auto]")}>
-        <div className="relative overflow-hidden">
-          <Image
-            src={thumbnail}
-            alt=""
-            fill
-            unoptimized
-            sizes="(max-width: 768px) 100vw, 50vw"
-            className="object-cover transition-transform duration-700 group-hover:scale-[1.06]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-slate-950/15 to-transparent" />
+    <Card className={cn("group flex flex-col overflow-hidden border-0 bg-[color:var(--surface)] shadow-sm shadow-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:hover:shadow-[0_8px_30px_rgba(255,255,255,0.04)]", className)}>
+      <Link href={`/listings/${listing.slug}`} className="block relative aspect-[4/3] overflow-hidden">
+        <Image
+          src={thumbnail}
+          alt={listing.title}
+          fill
+          unoptimized
+          sizes="(max-width: 768px) 100vw, 50vw"
+          className="object-cover transition-transform duration-700 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-transparent" />
+        
+        <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+          {listing.verified && (
+            <Badge className="bg-white/95 text-emerald-700 shadow-sm border-0 dark:bg-black/80 dark:text-emerald-400">
+              <ShieldCheck className="mr-1 h-3.5 w-3.5" /> Verified
+            </Badge>
+          )}
+          {hasResidentFeedback && (
+            <Badge className="bg-[color:var(--brand)] text-white shadow-sm border-0 dark:text-black">
+              <Star className="mr-1 h-3.5 w-3.5 fill-current" /> {listing.nestscore.toFixed(1)}
+            </Badge>
+          )}
+        </div>
 
-          <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-            <Badge className="inline-flex items-center gap-2 bg-white/92 dark:bg-slate-950/80">
-              <BadgeCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              {listing.verified ? "Verified stay" : "Needs verification"}
-            </Badge>
-            <Badge className="inline-flex items-center gap-2 bg-[color:var(--brand)] text-white">
-              <Star className="h-3.5 w-3.5 fill-current" />
-              {hasResidentFeedback ? `${listing.nestscore.toFixed(1)} NestScore` : "Awaiting resident feedback"}
-            </Badge>
+        <button
+          type="button"
+          aria-label={canSave ? (saved ? "Remove from favorites" : "Save to favorites") : "Sign in to save listings"}
+          onClick={(e) => {
+            e.preventDefault();
+            if (!canSave) {
+              router.push("/auth/login");
+              return;
+            }
+            setSaved((current) => !current);
+          }}
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-sm transition-transform hover:scale-110 dark:bg-black/80 dark:text-slate-300"
+        >
+          <Heart className={cn("h-4 w-4", saved && "fill-rose-500 text-rose-500")} />
+        </button>
+      </Link>
+
+      <div className="flex flex-1 flex-col p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-[family-name:var(--font-display)] text-[18px] font-bold leading-tight text-[color:var(--foreground)] line-clamp-1 group-hover:underline">
+              <Link href={`/listings/${listing.slug}`}>{listing.title}</Link>
+            </h3>
+            <p className="mt-1 text-[14px] text-[color:var(--muted)] line-clamp-1">{listing.locality}, {listing.city}</p>
           </div>
+          <div className="text-right">
+            <p className="font-[family-name:var(--font-display)] text-[18px] font-bold text-[color:var(--foreground)]">{formatRupee(listing.price)}</p>
+            <p className="text-[12px] text-[color:var(--muted)]">{formatPricePeriod(listing.priceType)}</p>
+          </div>
+        </div>
 
-          <button
-            type="button"
-            aria-label={canSave ? (saved ? "Remove from favorites" : "Save to favorites") : "Sign in to save listings"}
-            aria-pressed={canSave ? saved : false}
-            onClick={() => {
-              if (!canSave) {
-                router.push("/auth/login");
-                return;
-              }
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Badge className="border border-[color:var(--border)] bg-transparent text-[color:var(--muted)] shadow-none">
+            {propertyTypeLabels[listing.kind]}
+          </Badge>
+          <Badge className="border border-[color:var(--border)] bg-transparent text-[color:var(--muted)] shadow-none">
+            {genderLabels[genderPreference]}
+          </Badge>
+          {listing.amenities.slice(0, amenityCount).map((amenity, index) => {
+            const meta = getAmenityMeta(amenity);
+            return (
+              <Badge key={`${amenity}-${index}`} className="border border-[color:var(--border)] bg-transparent text-[color:var(--muted)] shadow-none flex items-center gap-1">
+                <meta.icon className="h-3 w-3" /> {meta.label}
+              </Badge>
+            );
+          })}
+        </div>
 
-              setSaved((current) => !current);
-            }}
-            disabled={!canSave}
-            className={cn(
-              "absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] backdrop-blur transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--ring)]",
-              canSave && saved && "bg-rose-500/95 text-white",
-              !canSave && "cursor-not-allowed opacity-70 hover:scale-100",
+        <div className="mt-auto pt-6">
+          <div className="flex items-center justify-between gap-2 border-t border-[color:var(--border)] pt-4">
+            <div className="flex items-center gap-2">
+              <div className={cn(
+                "h-2 w-2 rounded-full",
+                availability.tone === "danger" ? "bg-rose-500" :
+                availability.tone === "warn" ? "bg-amber-500" :
+                availability.tone === "success" ? "bg-emerald-500" : "bg-slate-400"
+              )} />
+              <span className="text-[13px] font-medium text-[color:var(--muted)]">{availability.label}</span>
+            </div>
+            
+            {availability.label === "Fully Occupied" ? (
+              <Button disabled size="sm" className="h-9 px-4 text-[13px]">
+                Fully Occupied
+              </Button>
+            ) : (
+              <Button asChild size="sm" className="h-9 px-4 text-[13px]">
+                <Link href={`/book/${listing.slug}`}>Book</Link>
+              </Button>
             )}
-          >
-            <Heart className={cn("h-4.5 w-4.5 transition-transform duration-200", canSave && saved && "fill-current")} />
-          </button>
-
-          <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
-            <div className="max-w-[75%]">
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/70">{listing.city}</p>
-              <h3 className="mt-1 line-clamp-2 break-words text-2xl font-semibold leading-tight text-white drop-shadow-sm sm:text-[1.7rem]">{listing.title}</h3>
-            </div>
-            <div className="hidden shrink-0 rounded-[var(--radius-md)] border border-white/20 bg-white/12 px-3 py-2 text-right text-white shadow-sm backdrop-blur sm:block">
-              <p className="text-lg font-semibold">{formatRupee(listing.price)}</p>
-              <p className="text-xs text-white/75">{formatPricePeriod(listing.priceType)}</p>
-            </div>
           </div>
         </div>
-
-        <div className={cn("flex h-full flex-col gap-4 p-5 sm:p-6", compact && "p-4", !compact && "sm:gap-5")}>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-            <Badge className="inline-flex items-center gap-2">
-              <MapPin className="h-3.5 w-3.5 text-teal-700 dark:text-teal-300" />
-              {listing.locality}
-            </Badge>
-            <Badge>{propertyTypeLabels[listing.kind]}</Badge>
-            <Badge className="inline-flex items-center gap-2">
-              <Users className="h-3.5 w-3.5 text-teal-700 dark:text-teal-300" />
-              {genderLabels[genderPreference]}
-            </Badge>
-            <Badge className="inline-flex items-center gap-2">
-              <Star className="h-3.5 w-3.5 text-amber-500" />
-              {hasResidentFeedback ? `${reviewCount} reviews` : "No reviews yet"}
-            </Badge>
-          </div>
-
-          <p className={cn("text-sm leading-6 text-slate-600 dark:text-slate-300", compact && "line-clamp-2")}>{description}</p>
-
-          <div className="space-y-2 rounded-[1.25rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4">
-            <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-              <span className="font-semibold text-slate-950 dark:text-slate-50">Availability</span>
-              <span className={cn(
-                "break-words",
-                "font-medium",
-                availability.tone === "danger" && "text-rose-600 dark:text-rose-400",
-                availability.tone === "warn" && "text-amber-600 dark:text-amber-300",
-                availability.tone === "success" && "text-emerald-600 dark:text-emerald-300",
-                availability.tone === "muted" && "text-slate-500 dark:text-slate-400",
-              )}>
-                {availability.label}
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700/80">
-              <div
-                className={cn(
-                  "h-full rounded-full transition-all duration-500",
-                  availability.tone === "danger" && "bg-rose-500",
-                  availability.tone === "warn" && "bg-amber-500",
-                  availability.tone === "success" && "bg-teal-600",
-                  availability.tone === "muted" && "bg-slate-400/50",
-                )}
-                style={{ width: `${availability.width}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {listing.amenities.slice(0, amenityCount).map((amenity) => {
-              const meta = getAmenityMeta(amenity);
-              const Icon = meta.icon;
-
-              return (
-                <Chip key={amenity} className="inline-flex items-center gap-2">
-                  <Icon className="h-3.5 w-3.5 text-teal-700 dark:text-teal-300" />
-                  {meta.label}
-                </Chip>
-              );
-            })}
-            {listing.amenities.length > amenityCount ? (
-              <Chip className="inline-flex items-center">+{listing.amenities.length - amenityCount} more</Chip>
-            ) : null}
-          </div>
-
-          <div className="mt-auto flex flex-col gap-3 pt-1 sm:flex-row">
-            <Button asChild className="w-full flex-1 justify-center shadow-sm shadow-teal-900/10">
-              <Link href={`/book/${listing.slug}`}>
-                Book now
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full flex-1 justify-center">
-              <Link href={`/listings/${listing.slug}`}>View details</Link>
-            </Button>
-            <Button
-              asChild
-              variant="ghost"
-              className="w-full flex-1 justify-center text-teal-800 hover:bg-teal-50 hover:text-teal-900 dark:text-teal-200 dark:hover:bg-teal-500/15 dark:hover:text-teal-50"
-            >
-              <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open ${listing.title} in Google Maps`}>
-                <MapPin className="h-4 w-4" />
-                Open in Maps
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            </Button>
-          </div>
-        </div>
-      </article>
+      </div>
     </Card>
   );
 }

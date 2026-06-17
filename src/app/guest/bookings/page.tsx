@@ -113,33 +113,40 @@ export default function GuestBookingsPage() {
   const confirmedCount = bookings.filter((booking) => booking.status === "confirmed").length;
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-6 pb-20 sm:px-6 sm:py-10 lg:px-8">
-      <div className="space-y-6">
-        <Card className="overflow-hidden border-white/70 bg-white/90 p-0 shadow-[0_24px_70px_-34px_rgba(15,23,42,0.3)] backdrop-blur dark:border-white/10 dark:bg-slate-950/45">
-          <div className="bg-[linear-gradient(135deg,rgba(15,118,110,0.16),rgba(255,255,255,0.96),rgba(20,184,166,0.10))] p-6 sm:p-8 dark:bg-[linear-gradient(135deg,rgba(15,118,110,0.22),rgba(15,23,42,0.92),rgba(20,184,166,0.12))]">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-300">Booking history</p>
-            <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl text-slate-950 dark:text-slate-50">Review stays, deposits, and payment status</h1>
-            <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600 dark:text-slate-300">All booked rooms, PGs, hostels, and bedspaces are stored safely in your NestMate account and linked to the NestPay ledger.</p>
-          </div>
-        </Card>
+    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mb-8">
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-[color:var(--foreground)] sm:text-4xl">Guest Dashboard</h1>
+        <p className="mt-2 text-[15px] text-[color:var(--muted)]">Manage your stays, profile, and payments.</p>
+        
+        {/* Simple Tab Navigation */}
+        <div className="mt-6 flex items-center gap-6 border-b border-[color:var(--border)]">
+          <Link href="/profile" className="pb-3 text-[15px] font-medium text-[color:var(--muted)] hover:text-[color:var(--foreground)] transition-colors">
+            Profile
+          </Link>
+          <Link href="/guest/bookings" className="border-b-2 border-[color:var(--foreground)] pb-3 text-[15px] font-semibold text-[color:var(--foreground)]">
+            My Bookings
+          </Link>
+        </div>
+      </div>
 
+      <div className="space-y-8">
         {bookings.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-3">
             {[
-              { label: "Bookings", value: bookings.length.toString(), icon: CalendarDays },
+              { label: "Total Bookings", value: bookings.length.toString(), icon: CalendarDays },
               { label: "Confirmed", value: confirmedCount.toString(), icon: BadgeCheck },
-              { label: "Payment links", value: bookings.filter((booking) => booking.payment).length.toString(), icon: CreditCard },
+              { label: "Payment Links", value: bookings.filter((booking) => booking.payment).length.toString(), icon: CreditCard },
             ].map((item) => {
               const Icon = item.icon;
 
               return (
-                <Card key={item.label} className="p-5">
+                <Card key={item.label} className="p-6 rounded-[20px] border border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{item.label}</p>
-                      <p className="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-50">{item.value}</p>
+                      <p className="text-[13px] font-medium text-[color:var(--muted)]">{item.label}</p>
+                      <p className="mt-1 text-2xl font-bold text-[color:var(--foreground)]">{item.value}</p>
                     </div>
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-50 text-teal-900 dark:bg-teal-500/15 dark:text-teal-100">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black/5 text-[color:var(--foreground)] dark:bg-white/5">
                       <Icon className="h-5 w-5" />
                     </div>
                   </div>
@@ -150,47 +157,62 @@ export default function GuestBookingsPage() {
         ) : null}
 
         {bookings.length === 0 ? (
-          <Card className="p-6">
-            <p className="text-sm text-slate-600 dark:text-slate-300">No bookings yet. Start from search or map.</p>
-            <div className="mt-4">
-              <Button asChild>
-                <Link href="/search">Browse listings <ArrowRight className="h-4 w-4" /></Link>
-              </Button>
-            </div>
-          </Card>
+          <div className="rounded-[24px] border border-[color:var(--border)] bg-black/5 p-12 text-center dark:bg-white/5">
+            <CalendarDays className="mx-auto h-12 w-12 text-[color:var(--muted)] opacity-50" />
+            <h3 className="mt-4 text-lg font-semibold text-[color:var(--foreground)]">No bookings yet</h3>
+            <p className="mt-2 text-[15px] text-[color:var(--muted)]">Start exploring to find your next stay.</p>
+            <Button asChild className="mt-6">
+              <Link href="/search">Browse listings <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </Button>
+          </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-6">
             {bookings.map((booking) => {
               const payment = booking.payment;
 
               return (
-                <Card key={booking.id} className="p-6 sm:p-7">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-teal-900 dark:bg-teal-500/15 dark:text-teal-100">
-                        <MapPinned className="h-3.5 w-3.5" />
-                        {booking.listingKind}
-                      </p>
-                      <h2 className="mt-3 text-2xl font-semibold text-slate-950 dark:text-slate-50">{booking.listingTitle}</h2>
-                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                        {booking.checkInDate} to {booking.checkOutDate} · Units: {booking.quantity} · Guests: {booking.guestCount}
-                      </p>
+                <Card key={booking.id} className="overflow-hidden rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] p-0 shadow-sm transition-shadow hover:shadow-md">
+                  <div className="p-6 sm:p-8">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <span className="inline-flex items-center gap-1.5 rounded-md bg-black/5 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-[color:var(--foreground)] dark:bg-white/10">
+                            <MapPinned className="h-3.5 w-3.5" />
+                            {booking.listingKind}
+                          </span>
+                          <span className="inline-flex items-center rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+                            {booking.status}
+                          </span>
+                        </div>
+                        <h2 className="mt-4 font-[family-name:var(--font-display)] text-2xl font-bold text-[color:var(--foreground)]">{booking.listingTitle}</h2>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[15px] text-[color:var(--muted)]">
+                          <span>{booking.checkInDate} to {booking.checkOutDate}</span>
+                          <span>&middot;</span>
+                          <span>{booking.quantity} Unit(s)</span>
+                          <span>&middot;</span>
+                          <span>{booking.guestCount} Guest(s)</span>
+                        </div>
+                      </div>
                     </div>
-                    <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-900 dark:bg-teal-500/15 dark:text-teal-100">
-                      {booking.status}
-                    </span>
-                  </div>
 
-                  <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-slate-700 dark:text-slate-200">
-                      Amount: <strong>{formatRupee(booking.amount)}</strong> · Payment: <strong>{payment?.payment_status ?? "pending"}</strong>
-                    </p>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={payment ? `/payment/${payment.id}` : `/search`}>
-                        Open payment
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
-                    </Button>
+                    <div className="mt-8 flex flex-col gap-4 border-t border-[color:var(--border)] pt-6 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-6">
+                        <div>
+                          <p className="text-[13px] font-medium text-[color:var(--muted)]">Total Amount</p>
+                          <p className="mt-1 text-[16px] font-bold text-[color:var(--foreground)]">{formatRupee(booking.amount)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[13px] font-medium text-[color:var(--muted)]">Payment Status</p>
+                          <p className="mt-1 text-[16px] font-semibold capitalize text-[color:var(--foreground)]">{payment?.payment_status ?? "Pending"}</p>
+                        </div>
+                      </div>
+                      <Button asChild variant="outline" className="h-10 px-6 font-semibold">
+                        <Link href={`/payment/${booking.id}`}>
+                          Open Payment
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               );

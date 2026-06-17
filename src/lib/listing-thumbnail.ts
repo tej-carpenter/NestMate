@@ -1,3 +1,5 @@
+import type { ListingStatus } from "@/lib/listings/status";
+
 type ListingThumbnailSource = {
   title: string;
   city: string;
@@ -5,7 +7,7 @@ type ListingThumbnailSource = {
   spaceType: "pg" | "hostel" | "hotel" | "room" | "bed" | "lodge" | "apartment";
   verified: boolean;
   nestscore: number;
-  status: "draft" | "pending_review" | "approved" | "rejected" | "expired" | "archived";
+  status: ListingStatus;
   reviewCount?: number;
 };
 
@@ -44,6 +46,7 @@ export function buildListingThumbnail(source: ListingThumbnailSource) {
     draft: "Draft",
     pending_review: "Pending review",
     approved: "Approved",
+    full: "Fully Occupied",
     rejected: "Rejected",
     expired: "Expired",
     archived: "Archived",

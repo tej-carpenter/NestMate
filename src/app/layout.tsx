@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, Source_Serif_4 } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { TrafficTracker } from "@/components/analytics/traffic-tracker";
 import { BottomNav } from "@/components/nav/bottom-nav";
 import { SiteFooter } from "@/components/site-footer";
@@ -9,12 +9,12 @@ import { siteConfig } from "@/lib/site";
 import { Toaster } from "sonner";
 import "./globals.css";
 
-const bodyFont = Manrope({
+const bodyFont = Inter({
   subsets: ["latin"],
   variable: "--font-body",
 });
 
-const displayFont = Source_Serif_4({
+const displayFont = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-display",
 });

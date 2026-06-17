@@ -23,6 +23,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
   const [guestCount, setGuestCount] = useState(1);
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
+  const [agreedToDisclaimer, setAgreedToDisclaimer] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -123,31 +124,50 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
       return;
     }
 
+    if (!agreedToDisclaimer) {
+      setStatus("You must acknowledge the accommodation disclaimer to proceed.");
+      return;
+    }
+
     setIsSubmitting(true);
     setStatus(null);
 
     try {
       const supabase = createSupabaseBrowserClient();
 
-      const { data: booking, error: bookingError } = await (supabase.from("bookings") as any)
-        .insert({
-          listing_id: selectedListing.id,
-          guest_id: session.userId,
-          host_id: selectedListing.hostId,
-          move_in_date: checkInDate,
-          move_out_date: checkOutDate,
-          rent_amount: selectedListing.price * quantity,
-          deposit_amount: 0,
-          booking_status: "pending",
-          payment_status: "pending",
-          notes: notes,
-          quantity: quantity,
-          guest_count: guestCount,
-        })
-        .select()
-        .single();
+      const { data: bookingResult, error: bookingError } = await (supabase as any).rpc(
+        "create_booking_transaction",
+        {
+          booking_payload: {
+            listing_id: selectedListing.id,
+            guest_id: session.userId,
+            host_id: selectedListing.hostId,
+            move_in_date: checkInDate,
+            move_out_date: checkOutDate,
+            rent_amount: selectedListing.price * quantity,
+            deposit_amount: 0,
+            booking_status: "pending",
+            payment_status: "pending",
+            notes: notes,
+            quantity: quantity,
+            guest_count: guestCount,
+          }
+        }
+      );
 
       if (bookingError) throw bookingError;
+      if (!bookingResult?.success || !bookingResult?.booking_id) {
+        throw new Error("Failed to secure booking. Please try again.");
+      }
+
+      await supabase.from("user_policy_acceptances").insert({
+        user_id: session.userId,
+        policy_type: "booking_acknowledgement",
+        policy_version: "June 2026",
+        user_agent: window.navigator.userAgent,
+      });
+
+      const booking = { id: bookingResult.booking_id };
 
       setStatus("Booking created. Redirecting to payment...");
       router.push(`/payment/${booking.id}`);
@@ -161,137 +181,137 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-6 pb-28 sm:px-6 sm:py-10 sm:pb-10 lg:px-8">
       <div className="grid gap-6 lg:grid-cols-[1.12fr_0.88fr] lg:items-start">
-        <Card className="overflow-hidden border-white/70 bg-white/90 p-0 shadow-[0_24px_70px_-34px_rgba(15,23,42,0.3)] backdrop-blur dark:border-white/10 dark:bg-slate-950/45">
-          <div className="border-b border-[color:var(--border)] bg-[linear-gradient(135deg,rgba(15,118,110,0.16),rgba(255,255,255,0.96),rgba(20,184,166,0.10))] p-5 sm:p-8 dark:bg-[linear-gradient(135deg,rgba(15,118,110,0.22),rgba(15,23,42,0.92),rgba(20,184,166,0.12))]">
+        <Card className="overflow-hidden rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] shadow-lg shadow-black/5 dark:shadow-white/5">
+          <div className="border-b border-[color:var(--border)] p-6 sm:p-10">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-900 dark:bg-teal-500/15 dark:text-teal-100">
-                <Sparkles className="h-3.5 w-3.5" />
-                NestPay booking
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-teal-50 px-2 py-1 text-xs font-medium text-teal-700 dark:bg-teal-500/10 dark:text-teal-400">
+                <Sparkles className="h-3.5 w-3.5" /> NestPay Secure
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-100">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                Verified inventory
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+                <ShieldCheck className="h-3.5 w-3.5" /> Verified stay
               </span>
             </div>
-            <h1 className="mt-4 font-[family-name:var(--font-display)] text-3xl text-[color:var(--foreground)] sm:text-5xl">{selectedListing.title}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--muted)] sm:text-base sm:leading-7">
-              {selectedListing.locality}, {selectedListing.city} · {String(selectedListing.kind).toUpperCase()} · {hasResidentFeedback ? `NestScore ${selectedListing.nestscore.toFixed(1)}` : "Awaiting resident feedback"}
+            
+            <h1 className="mt-6 font-[family-name:var(--font-display)] text-3xl font-bold text-[color:var(--foreground)] sm:text-4xl">{selectedListing.title}</h1>
+            <p className="mt-2 text-lg text-[color:var(--muted)]">
+              {selectedListing.locality}, {selectedListing.city} · {String(selectedListing.kind).toUpperCase()}
             </p>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-[color:var(--muted)] sm:text-base">{selectedListing.description}</p>
-
-            <details className="mt-5 rounded-[1.5rem] border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-950 dark:text-slate-50">
-                What stays visible
-                <ChevronDown className="h-4 w-4 text-slate-500 transition-transform open:rotate-180" />
-              </summary>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                {[
-                  { label: "Secure hold", value: "Payment handoff" },
-                  { label: "Transparent fees", value: "No hidden steps" },
-                  { label: "Secure Payment", value: "Razorpay Checkout" },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-[1.4rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{item.label}</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-50">{item.value}</p>
-                  </div>
-                ))}
-              </div>
-            </details>
           </div>
 
-          <form id="booking-form" className="grid gap-4 p-5 sm:p-8 sm:pt-7 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]" onSubmit={(e) => { void handleCreateBooking(e); }}>
+          <form id="booking-form" className="p-6 sm:p-10" onSubmit={(e) => { void handleCreateBooking(e); }}>
             {!isAuthenticated ? (
-              <div className="sm:col-span-2">
-                <Card className="p-4 mb-4">
-                  <p className="text-sm text-[color:var(--muted)]">Sign in to create bookings and access payment history.</p>
-                  <div className="mt-3">
-                    <Button asChild>
-                      <Link href="/auth/login">Sign in to continue</Link>
-                    </Button>
-                  </div>
-                </Card>
+              <div className="mb-8 rounded-xl bg-black/5 p-6 text-center dark:bg-white/5">
+                <p className="text-[15px] font-medium text-[color:var(--foreground)]">Sign in to continue</p>
+                <p className="mt-1 text-[14px] text-[color:var(--muted)]">You need an account to create bookings and access payment history.</p>
+                <Button asChild className="mt-4">
+                  <Link href="/auth/login">Sign in</Link>
+                </Button>
               </div>
             ) : null}
-            <div className="sm:col-span-2 grid gap-4 rounded-[1.5rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4 sm:grid-cols-2 sm:p-5">
-              <label className="space-y-2">
-                <span className="flex items-center gap-2 text-sm font-medium text-[color:var(--foreground)]"><CalendarDays className="h-4 w-4 text-teal-700 dark:text-teal-300" /> Check-in</span>
-                <Input type="date" value={checkInDate} onChange={(event) => setCheckInDate(event.target.value)} />
-              </label>
-              <label className="space-y-2">
-                <span className="flex items-center gap-2 text-sm font-medium text-[color:var(--foreground)]"><CalendarDays className="h-4 w-4 text-teal-700 dark:text-teal-300" /> Check-out</span>
-                <Input type="date" value={checkOutDate} onChange={(event) => setCheckOutDate(event.target.value)} />
+
+            <div className="grid gap-8 sm:grid-cols-2">
+              <div className="space-y-6">
+                <h3 className="text-[18px] font-semibold text-[color:var(--foreground)]">Stay dates</h3>
+                
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="text-[14px] font-medium text-[color:var(--foreground)]">Check-in</span>
+                    <Input type="date" className="h-12 rounded-xl" value={checkInDate} onChange={(event) => setCheckInDate(event.target.value)} />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-[14px] font-medium text-[color:var(--foreground)]">Check-out</span>
+                    <Input type="date" className="h-12 rounded-xl" value={checkOutDate} onChange={(event) => setCheckOutDate(event.target.value)} />
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <h3 className="text-[18px] font-semibold text-[color:var(--foreground)]">Guest details</h3>
+                
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="text-[14px] font-medium text-[color:var(--foreground)]">Guests</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={8}
+                      className="h-12 rounded-xl"
+                      value={guestCount}
+                      onChange={(event) => setGuestCount(Math.max(1, Number(event.target.value) || 1))}
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-[14px] font-medium text-[color:var(--foreground)]">Units required</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={Math.max(1, selectedListing.availableUnits)}
+                      className="h-12 rounded-xl"
+                      value={quantity}
+                      onChange={(event) => setQuantity(Math.min(Math.max(1, selectedListing.availableUnits), Math.max(1, Number(event.target.value) || 1)))}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <label className="space-y-2 sm:col-span-2">
+                <span className="text-[14px] font-medium text-[color:var(--foreground)]">Special requests (optional)</span>
+                <Input className="h-12 rounded-xl" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Any special requirement or move-in note" />
               </label>
             </div>
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-[color:var(--foreground)]">Guests</span>
-              <Input
-                type="number"
-                min={1}
-                max={8}
-                value={guestCount}
-                onChange={(event) => setGuestCount(Math.max(1, Number(event.target.value) || 1))}
+
+            <label className="mt-8 flex items-start gap-3">
+              <input 
+                type="checkbox" 
+                className="mt-1 h-4 w-4 rounded border-[color:var(--border)] text-[color:var(--brand)] focus:ring-[color:var(--brand)]" 
+                checked={agreedToDisclaimer}
+                onChange={(e) => setAgreedToDisclaimer(e.target.checked)}
               />
+              <span className="text-[13px] leading-relaxed text-[color:var(--muted)]">
+                I understand that Nestmate is a marketplace platform and does not own or operate the listed accommodation.
+              </span>
             </label>
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-[color:var(--foreground)]">Units</span>
-              <Input
-                type="number"
-                min={1}
-                max={Math.max(1, selectedListing.availableUnits)}
-                value={quantity}
-                onChange={(event) => setQuantity(Math.min(Math.max(1, selectedListing.availableUnits), Math.max(1, Number(event.target.value) || 1)))}
-              />
-            </label>
-            <label className="space-y-2 sm:col-span-2">
-              <span className="flex items-center gap-2 text-sm font-medium text-[color:var(--foreground)]"><CreditCard className="h-4 w-4 text-teal-700 dark:text-teal-300" /> Notes</span>
-              <Input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Any special requirement, timing, or move-in note" />
-            </label>
-            <div className="sm:col-span-2 flex flex-col gap-3 rounded-[1.5rem] border border-[color:var(--border)] bg-[color:var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Booking action</p>
-                <p className="mt-1 text-sm text-[color:var(--muted)]">Continue to payment only after you lock the stay details.</p>
-              </div>
-              <Button type="submit" disabled={isSubmitting || !isAuthenticated} className="w-full sm:w-auto">
+
+            <div className="mt-8 flex items-center justify-end border-t border-[color:var(--border)] pt-8">
+              <Button type="submit" disabled={isSubmitting || !isAuthenticated} className="h-12 px-8 text-[15px]">
                 {isSubmitting ? "Creating booking..." : "Continue to payment"}
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </form>
 
-          {status ? <p className="border-t border-[color:var(--border)] px-5 py-4 text-sm text-[color:var(--foreground)] sm:px-8" aria-live="polite">{status}</p> : null}
+          {status ? <p className="border-t border-[color:var(--border)] px-6 py-4 text-[14px] text-[color:var(--muted)]" aria-live="polite">{status}</p> : null}
         </Card>
 
-        <Card className="p-6 sm:p-8 lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-[1.6rem] border border-[color:var(--border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,250,252,0.96))] p-5 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(15,23,42,0.88))]">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Booking summary</p>
-            <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-slate-50">{formatRupee(selectedListing.price * quantity)}</p>
-            <p className="mt-1 text-sm text-[color:var(--muted)]">Pricing {formatPricePeriod(selectedListing.priceType)} · Units selected {quantity}</p>
-            <div className="mt-4 flex items-center justify-between rounded-[1.25rem] bg-teal-50 px-4 py-3 text-sm text-teal-950 dark:bg-teal-500/15 dark:text-teal-50">
-              <span className="font-medium">Resident feedback</span>
-              <span className="font-semibold">{hasResidentFeedback ? `${selectedListing.nestscore.toFixed(1)} / 5` : "No reviews yet"}</span>
+        <aside className="lg:sticky lg:top-8 lg:self-start">
+          <Card className="flex flex-col gap-6 overflow-hidden rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-xl shadow-black/5 dark:shadow-white/5">
+            <div>
+              <p className="text-[24px] font-bold text-[color:var(--foreground)]">{formatRupee(selectedListing.price * quantity)}</p>
+              <p className="text-[15px] font-normal text-[color:var(--muted)]">{formatPricePeriod(selectedListing.priceType)}</p>
             </div>
-          </div>
 
-          <details className="mt-4 rounded-[1.35rem] border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
-            <summary className="cursor-pointer list-none text-sm font-semibold text-slate-950 dark:text-slate-50">More booking context</summary>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="grid gap-3 border-y border-[color:var(--border)] py-6">
               {[
-                { label: "Availability", value: hasAvailabilityData ? `${selectedListing.availableUnits}/${selectedListing.totalUnits}` : "Not listed yet" },
+                { label: "Selected units", value: quantity },
                 { label: "Move-in total", value: formatRupee(moveInTotal) },
-                { label: "Login required", value: session ? session.name : "Yes" },
+                { label: "Availability", value: hasAvailabilityData ? `${selectedListing.availableUnits}/${selectedListing.totalUnits}` : "Not listed yet" },
+                { label: "NestScore", value: hasResidentFeedback ? `${selectedListing.nestscore.toFixed(1)} / 5` : "New" },
               ].map((item) => (
-                <div key={item.label} className="rounded-[1.35rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{item.label}</p>
-                  <p className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-50">{item.value}</p>
+                <div key={item.label} className="flex justify-between">
+                  <p className="text-[14px] font-medium text-[color:var(--muted)]">{item.label}</p>
+                  <p className="text-[14px] font-medium text-[color:var(--foreground)]">{item.value}</p>
                 </div>
               ))}
-              <div className="rounded-[1.35rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4 text-sm text-[color:var(--muted)]">
-                <p className="font-semibold text-[color:var(--foreground)]">Trust-first handoff</p>
-                <p className="mt-1 leading-6">This page captures stay details only. NestPay will handle secure confirmation via Razorpay on the next screen.</p>
-              </div>
             </div>
-          </details>
-        </Card>
+
+            <div className="rounded-xl bg-black/5 p-4 dark:bg-white/5">
+              <p className="text-[13px] font-semibold text-[color:var(--foreground)]">Secure Checkout</p>
+              <p className="mt-1 text-[13px] text-[color:var(--muted)] leading-relaxed">
+                You will be redirected to Razorpay to securely complete your payment on the next screen.
+              </p>
+            </div>
+          </Card>
+        </aside>
       </div>
 
       <div className="fixed inset-x-0 bottom-[5.25rem] z-40 border-t border-[color:var(--border)] bg-[color:var(--surface)]/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:hidden">

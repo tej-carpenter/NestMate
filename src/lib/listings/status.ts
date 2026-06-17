@@ -1,4 +1,4 @@
-export const listingStatusValues = ["draft", "pending_review", "approved", "rejected", "expired", "archived"] as const;
+export const listingStatusValues = ["draft", "pending_review", "approved", "rejected", "expired", "archived", "full"] as const;
 
 export type ListingStatus = (typeof listingStatusValues)[number];
 
@@ -31,7 +31,7 @@ export function normalizeModerationState(value: string | null | undefined): List
 }
 
 export function isPublicListingStatus(status: ListingStatus, moderationState: ListingModerationState = "active") {
-  return status === "approved" && moderationState === "active";
+  return (status === "approved" || status === "full") && moderationState === "active";
 }
 
 export function isExpiredListing(status: ListingStatus) {
@@ -54,12 +54,16 @@ export function getListingStatusLabel(status: ListingStatus, moderationState: Li
       return "Pending review";
     case "approved":
       return "Approved";
+    case "full":
+      return "Fully Occupied";
     case "rejected":
       return "Rejected";
     case "expired":
       return "Expired";
     case "archived":
       return "Archived";
+    default:
+      return "Unknown";
   }
 }
 

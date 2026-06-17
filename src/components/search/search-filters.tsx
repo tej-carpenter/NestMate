@@ -58,25 +58,24 @@ export function SearchFilters() {
   ].filter(Boolean);
 
   return (
-    <section className="glass-panel rounded-[2rem] border border-[color:var(--border)] p-4 pb-24 shadow-sm shadow-slate-900/5 sm:p-6 sm:pb-6">
+    <section className="rounded-[24px] bg-[color:var(--surface)] p-6 shadow-sm border border-[color:var(--border)] sm:p-8">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <Badge className="bg-teal-50 text-teal-950 dark:bg-teal-500/15 dark:text-teal-100">Quick search</Badge>
-          <h2 className="mt-3 text-2xl font-semibold text-slate-950 dark:text-slate-50">Tell us the first thing that matters.</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">Start with city or keyword, then reveal the rest only if you need tighter control.</p>
+          <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-[color:var(--foreground)]">Tell us what matters.</h2>
+          <p className="mt-2 text-[15px] text-[color:var(--muted)]">Start with a city or keyword, then reveal the rest if you need tighter control.</p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400 sm:justify-end">
+        <div className="flex flex-wrap gap-2 text-[13px] font-medium text-[color:var(--muted)] sm:justify-end">
           {activeSummary.length > 0 ? (
             activeSummary.map((item) => (
-              <Chip key={item} className="!rounded-full px-3 py-1.5">{item}</Chip>
+              <Badge key={item} className="rounded-md border-0 bg-black/5 px-3 py-1.5 text-[color:var(--foreground)] dark:bg-white/10">{item}</Badge>
             ))
           ) : (
-            <Chip className="!rounded-full px-3 py-1.5">Smart defaults on</Chip>
+            <Badge className="rounded-md border-0 bg-black/5 px-3 py-1.5 text-[color:var(--foreground)] dark:bg-white/10">Smart defaults on</Badge>
           )}
         </div>
       </div>
 
-      <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="mt-6 flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {quickChips.map((chip) => {
           const active =
             (chip.value === "metro" && query.includes("metro")) ||
@@ -88,6 +87,11 @@ export function SearchFilters() {
             <button
               key={chip.label}
               type="button"
+              className={`shrink-0 rounded-full px-4 py-2 text-[14px] font-medium transition-colors ${
+                active 
+                  ? "bg-[color:var(--foreground)] text-[color:var(--background)]" 
+                  : "bg-black/5 text-[color:var(--foreground)] hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
+              }`}
               onClick={() => {
                 if (chip.value === "metro") setQuery("metro near metro station");
                 if (chip.value === "12000") setMaxPrice("12000");
@@ -95,71 +99,64 @@ export function SearchFilters() {
                 if (chip.value === "pg") setPropertyType("pg");
               }}
             >
-              <Chip className={active ? "border-teal-500/40 bg-teal-50 text-teal-900" : ""}>{chip.label}</Chip>
+              {chip.label}
             </button>
           );
         })}
       </div>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-        <label className="space-y-2 sm:col-span-2">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Search</span>
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Locality, landmark, or listing title" />
+      <div className="mt-8 grid gap-4 sm:grid-cols-[2fr_1fr_1fr]">
+        <label className="space-y-2">
+          <span className="text-[14px] font-medium text-[color:var(--foreground)]">Search</span>
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Locality, landmark, or title" className="bg-transparent" />
         </label>
-        <label className="min-w-0 space-y-2">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">City</span>
-          <Input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Indore" />
+        <label className="space-y-2">
+          <span className="text-[14px] font-medium text-[color:var(--foreground)]">City</span>
+          <Input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Indore" className="bg-transparent" />
         </label>
-        <label className="min-w-0 space-y-2">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Budget cap</span>
-          <Input value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} inputMode="numeric" placeholder="15000" />
+        <label className="space-y-2">
+          <span className="text-[14px] font-medium text-[color:var(--foreground)]">Budget cap</span>
+          <Input value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} inputMode="numeric" placeholder="15000" className="bg-transparent" />
         </label>
       </div>
 
-      <details className="mt-4 rounded-[1.5rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4">
-        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-950 dark:text-slate-50">More filters</summary>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <details className="group mt-6">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-2 text-[14px] font-medium text-[color:var(--foreground)] hover:text-[color:var(--muted)]">
+          <span>More filters</span>
+          <span className="text-[10px] transition-transform group-open:rotate-180">▼</span>
+        </summary>
+        <div className="mt-6 grid gap-4 rounded-xl bg-black/5 p-6 dark:bg-white/5 sm:grid-cols-3">
           <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Property type</span>
-            <Select value={propertyType} onChange={(event) => setPropertyType(event.target.value)}>
+            <span className="text-[14px] font-medium text-[color:var(--foreground)]">Property type</span>
+            <Select value={propertyType} onChange={(event) => setPropertyType(event.target.value)} className="bg-[color:var(--surface)]">
               <option value="">Any</option>
               {propertyTypes.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
                 </option>
               ))}
             </Select>
           </label>
           <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Gender</span>
-            <Select value={gender} onChange={(event) => setGender(event.target.value)}>
+            <span className="text-[14px] font-medium text-[color:var(--foreground)]">Gender</span>
+            <Select value={gender} onChange={(event) => setGender(event.target.value)} className="bg-[color:var(--surface)]">
               {genders.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {option.charAt(0).toUpperCase() + option.slice(1)}
                 </option>
               ))}
             </Select>
           </label>
           <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Min price</span>
-            <Input value={minPrice} onChange={(event) => setMinPrice(event.target.value)} inputMode="numeric" placeholder="5000" />
+            <span className="text-[14px] font-medium text-[color:var(--foreground)]">Min price</span>
+            <Input value={minPrice} onChange={(event) => setMinPrice(event.target.value)} inputMode="numeric" placeholder="5000" className="bg-[color:var(--surface)]" />
           </label>
-          <div className="flex items-end">
-            <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">The page starts simple and expands only when you need tighter control.</p>
-          </div>
         </div>
       </details>
 
-      <div className="mt-5 hidden flex-col gap-3 sm:flex sm:flex-row sm:justify-end">
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
         <Button type="button" variant="outline" onClick={() => router.push("/search")}>Reset</Button>
         <Button type="button" onClick={applyFilters}>Apply filters</Button>
-      </div>
-
-      <div className="fixed inset-x-0 bottom-[5.25rem] z-40 border-t border-[color:var(--border)] bg-[color:var(--surface)]/96 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:hidden">
-        <div className="mx-auto flex w-full max-w-7xl gap-3 px-1">
-          <Button type="button" variant="outline" className="h-12 flex-1" onClick={() => router.push("/search")}>Reset</Button>
-          <Button type="button" className="h-12 flex-1" onClick={applyFilters}>Apply filters</Button>
-        </div>
       </div>
     </section>
   );

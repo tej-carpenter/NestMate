@@ -326,8 +326,8 @@ export default function AdminDashboardPage() {
               </div>
               <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{property.description}</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                {property.amenities?.map((amenity: string) => (
-                  <Chip key={amenity} className="!rounded-full px-3 py-1 text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                {property.amenities?.map((amenity: string, index: number) => (
+                  <Chip key={`${amenity}-${index}`} className="!rounded-full px-3 py-1 text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                     {amenity}
                   </Chip>
                 ))}

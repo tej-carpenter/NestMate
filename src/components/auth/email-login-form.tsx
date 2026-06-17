@@ -73,41 +73,41 @@ export function EmailLoginForm() {
   }
 
   return (
-    <Card className="mx-auto w-full max-w-md p-5 sm:p-7 lg:p-8">
+    <Card className="mx-auto w-full max-w-md overflow-hidden rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6 sm:p-8 shadow-xl shadow-black/5 dark:shadow-white/5">
       <div className="space-y-3">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-300">Login</p>
-        <h1 className="font-[family-name:var(--font-display)] text-3xl leading-tight text-slate-950 dark:text-slate-50">Welcome back</h1>
+        <p className="text-[13px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">Login</p>
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-[color:var(--foreground)]">Welcome back</h1>
       </div>
 
-      <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-        <label className="space-y-2">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Email</span>
-          <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" type="email" autoComplete="email" />
+      <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+        <label className="space-y-2 flex flex-col">
+          <span className="text-[14px] font-semibold text-[color:var(--foreground)]">Email</span>
+          <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" type="email" autoComplete="email" className="h-12 rounded-xl text-[15px]" />
         </label>
 
-        <label className="space-y-2">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Password</span>
-          <Input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Your password" type="password" autoComplete="current-password" />
+        <label className="space-y-2 flex flex-col">
+          <span className="text-[14px] font-semibold text-[color:var(--foreground)]">Password</span>
+          <Input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Your password" type="password" autoComplete="current-password" className="h-12 rounded-xl text-[15px]" />
         </label>
 
-        <div className="flex items-center justify-between gap-3 text-sm">
-          <Link href="/auth/forgot-password" className="inline-flex items-center gap-2 font-medium text-teal-800 hover:text-teal-950 dark:text-teal-300 dark:hover:text-teal-100">
+        <div className="flex items-center justify-between gap-3 text-[14px]">
+          <Link href="/auth/forgot-password" className="inline-flex items-center gap-2 font-semibold text-[color:var(--muted)] hover:text-[color:var(--foreground)] transition-colors">
             <Mail className="h-4 w-4" />
             Forgot password?
           </Link>
         </div>
 
-        <Button type="submit" className="h-12 w-full justify-center" disabled={isSubmitting}>
+        <Button type="submit" className="mt-2 h-12 w-full justify-center rounded-xl text-[15px]" disabled={isSubmitting}>
           {isSubmitting ? "Signing in..." : "Login"}
-          <ArrowRight className="h-4 w-4" />
+          <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </form>
 
-      {status ? <p className="mt-4 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--foreground)]">{status}</p> : null}
+      {status ? <p className="mt-5 rounded-xl border border-[color:var(--border)] bg-black/5 px-4 py-3 text-[14px] font-medium text-[color:var(--foreground)] dark:bg-white/5">{status}</p> : null}
 
-      <p className="mt-5 text-center text-sm text-slate-600 dark:text-slate-300">
+      <p className="mt-6 text-center text-[14px] font-medium text-[color:var(--muted)]">
         New to Nestmate?{" "}
-        <Link href="/auth/signup" className="font-semibold text-teal-800 hover:text-teal-950 dark:text-teal-300 dark:hover:text-teal-100">
+        <Link href="/auth/signup" className="font-bold text-[color:var(--foreground)] hover:underline">
           Create an account
         </Link>
       </p>

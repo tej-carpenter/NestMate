@@ -30,7 +30,7 @@ export interface ListingRecord {
   amenities: string[];
   gender_preference: "male" | "female" | "any";
   images: string[];
-  status: "draft" | "pending_review" | "approved" | "rejected" | "expired" | "archived";
+  status: "draft" | "pending_review" | "approved" | "full" | "rejected" | "expired" | "archived";
   moderation_state: "active" | "suspended";
   rejection_reason: string | null;
   suspension_reason: string | null;

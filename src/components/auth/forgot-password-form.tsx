@@ -48,28 +48,28 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <Card className="mx-auto w-full max-w-md p-5 sm:p-7 lg:p-8">
+    <Card className="mx-auto w-full max-w-md overflow-hidden rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6 sm:p-8 shadow-xl shadow-black/5 dark:shadow-white/5">
       <div className="space-y-3">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-300">Password reset</p>
-        <h1 className="font-[family-name:var(--font-display)] text-3xl leading-tight text-slate-950 dark:text-slate-50">Reset your password</h1>
+        <p className="text-[13px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">Password reset</p>
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-[color:var(--foreground)]">Reset your password</h1>
       </div>
 
-      <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-        <label className="space-y-2">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Email</span>
-          <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" type="email" autoComplete="email" />
+      <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+        <label className="space-y-2 flex flex-col">
+          <span className="text-[14px] font-semibold text-[color:var(--foreground)]">Email</span>
+          <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" type="email" autoComplete="email" className="h-12 rounded-xl text-[15px]" />
         </label>
 
-        <Button type="submit" className="h-12 w-full justify-center" disabled={isSubmitting}>
-          <Mail className="h-4 w-4" />
+        <Button type="submit" className="mt-2 h-12 w-full justify-center rounded-xl text-[15px]" disabled={isSubmitting}>
+          <Mail className="mr-2 h-4 w-4" />
           {isSubmitting ? "Sending..." : "Send reset email"}
         </Button>
       </form>
 
-      {status ? <p className="mt-4 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--foreground)]">{status}</p> : null}
+      {status ? <p className="mt-5 rounded-xl border border-[color:var(--border)] bg-black/5 px-4 py-3 text-[14px] font-medium text-[color:var(--foreground)] dark:bg-white/5">{status}</p> : null}
 
-      <p className="mt-5 text-center text-sm text-slate-600 dark:text-slate-300">
-        <Link href="/auth/login" className="font-semibold text-teal-800 hover:text-teal-950 dark:text-teal-300 dark:hover:text-teal-100">
+      <p className="mt-6 text-center text-[14px] font-medium text-[color:var(--muted)]">
+        <Link href="/auth/login" className="font-bold text-[color:var(--foreground)] hover:underline">
           Back to login
         </Link>
       </p>

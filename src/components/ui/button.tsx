@@ -10,10 +10,10 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const buttonStyles: Record<ButtonVariant, string> = {
-  default: "bg-[color:var(--brand)] text-white hover:bg-[color:var(--brand-strong)]",
-  secondary: "bg-[color:var(--surface-strong)] text-[color:var(--foreground)] hover:opacity-95",
+  default: "bg-[color:var(--brand)] text-[color:var(--brand-foreground)] shadow-sm shadow-black/10 hover:opacity-90",
+  secondary: "bg-black/5 text-[color:var(--foreground)] hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15",
   ghost: "bg-transparent text-[color:var(--foreground)] hover:bg-black/5 dark:hover:bg-white/10",
-  outline: "border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] hover:bg-[color:var(--surface-strong)]",
+  outline: "border border-[color:var(--border)] bg-transparent text-[color:var(--foreground)] hover:bg-black/5 dark:hover:bg-white/5",
 };
 
 const sizeStyles: Record<NonNullable<ButtonProps["size"]>, string> = {

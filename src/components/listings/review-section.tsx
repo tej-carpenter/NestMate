@@ -116,35 +116,46 @@ export default function ReviewSection({ listingId, listingSlug }: { listingId: s
       <div className="mt-5 grid gap-4">
         {reviews.length > 0 ? (
           reviews.map((review) => (
-            <Card key={review.id} className="p-4">
+            <Card key={review.id} className="p-6 rounded-[24px] border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm dark:shadow-white/5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold">{review.reviewerName}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(review.createdAt).toLocaleDateString()}</p>
+                  <p className="text-[15px] font-bold text-[color:var(--foreground)]">{review.reviewerName}</p>
+                  <p className="mt-0.5 text-[13px] font-medium text-[color:var(--muted)]">{new Date(review.createdAt).toLocaleDateString()}</p>
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-900">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--brand)] px-3 py-1 text-[13px] font-bold text-white dark:text-black">
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
                   {review.rating.toFixed(1)}
                 </div>
               </div>
-              <p className="mt-3 text-sm text-[color:var(--muted)]">{review.text}</p>
+              <p className="mt-4 text-[15px] leading-relaxed text-[color:var(--muted)]">{review.text}</p>
             </Card>
           ))
         ) : (
-          <Card className="p-4 text-sm leading-6 text-[color:var(--muted)]">
-            No reviews yet. This listing is awaiting resident feedback.
+          <Card className="p-8 text-center rounded-[24px] border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm dark:shadow-white/5">
+            <p className="text-[15px] font-medium text-[color:var(--muted)]">No reviews yet. This listing is awaiting resident feedback.</p>
           </Card>
         )}
       </div>
 
-      <div className="mt-6 rounded-[1.25rem] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-4">
-        <p className="text-sm font-semibold">Leave a review</p>
-        <p className="mt-2 text-sm text-[color:var(--muted)]">Only users who booked this property can submit a review.</p>
-        <form className="mt-3 grid gap-2" onSubmit={handleSubmit}>
-          <Input value={rating} onChange={(e: ChangeEvent<HTMLInputElement>) => setRating(Number(e.target.value) || 5)} type="number" min={1} max={5} />
-          <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Share your experience (optional)" />
-          <div className="flex items-center gap-2">
-            <Button type="submit" disabled={!session}>Submit review</Button>
-            {status ? <p className="text-sm text-[color:var(--muted)]">{status}</p> : null}
+      <div className="mt-8 rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-6 sm:p-8">
+        <h4 className="text-[18px] font-semibold text-[color:var(--foreground)]">Leave a review</h4>
+        <p className="mt-1 text-[14px] text-[color:var(--muted)]">Only users who booked this property can submit a review.</p>
+        <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="space-y-2">
+              <span className="text-[14px] font-medium text-[color:var(--foreground)]">Rating (1-5)</span>
+              <Input className="h-12 rounded-xl" value={rating} onChange={(e: ChangeEvent<HTMLInputElement>) => setRating(Number(e.target.value) || 5)} type="number" min={1} max={5} />
+            </label>
+          </div>
+          <label className="space-y-2">
+            <span className="text-[14px] font-medium text-[color:var(--foreground)]">Share your experience</span>
+            <Input className="h-12 rounded-xl" value={text} onChange={(e) => setText(e.target.value)} placeholder="What was your stay like?" />
+          </label>
+          <div className="mt-2 flex items-center gap-4">
+            <Button type="submit" disabled={!session} className="h-12 px-8">Submit review</Button>
+            {status ? <p className="text-[14px] font-medium text-[color:var(--muted)]">{status}</p> : null}
           </div>
         </form>
       </div>
