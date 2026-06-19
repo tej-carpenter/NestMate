@@ -16,7 +16,7 @@ export default function Stats() {
       const { data: listings } = await supabase
         .from("listings")
         .select("city")
-        .eq("status", "active");
+        .eq("status", "approved");
 
       if (listings) {
         setVerifiedCount(listings.length); // Assuming all active listings are verified in DB

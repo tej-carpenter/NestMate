@@ -124,7 +124,7 @@ export default function AdminDashboardPage() {
 
   async function approveListing(listingId: string) {
     const supabase = createSupabaseBrowserClient();
-    await (supabase.from("listings") as any).update({ status: "active" }).eq("id", listingId);
+    await (supabase.from("listings") as any).update({ status: "approved" }).eq("id", listingId);
     refresh();
   }
 
@@ -139,14 +139,14 @@ export default function AdminDashboardPage() {
   async function suspendListing(listingId: string) {
     const reason = window.prompt("Enter the suspension reason")?.trim();
     const supabase = createSupabaseBrowserClient();
-    await (supabase.from("listings") as any).update({ status: "suspended" }).eq("id", listingId);
+    await (supabase.from("listings") as any).update({ status: "archived" }).eq("id", listingId);
     refresh();
   }
 
   async function restoreListing(listingId: string) {
     const reason = window.prompt("Enter the restore note")?.trim();
     const supabase = createSupabaseBrowserClient();
-    await (supabase.from("listings") as any).update({ status: "active" }).eq("id", listingId);
+    await (supabase.from("listings") as any).update({ status: "approved" }).eq("id", listingId);
     refresh();
   }
 
@@ -159,7 +159,7 @@ export default function AdminDashboardPage() {
 
   async function renewExpiredListing(listingId: string) {
     const supabase = createSupabaseBrowserClient();
-    await (supabase.from("listings") as any).update({ status: "active" }).eq("id", listingId);
+    await (supabase.from("listings") as any).update({ status: "approved" }).eq("id", listingId);
     refresh();
   }
 
@@ -337,22 +337,22 @@ export default function AdminDashboardPage() {
                 <Button asChild variant="outline" className="sm:flex-1 min-w-[100px]">
                   <Link href={`/host/listings/new?edit=${property.slug}`}>Edit</Link>
                 </Button>
-                {property.status !== "active" ? (
+                {property.status !== "approved" ? (
                   <Button variant="outline" className="sm:flex-1 min-w-[100px] border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50" onClick={() => void approveListing(property.id)}>
                     Approve
                   </Button>
                 ) : null}
-                {property.status !== "rejected" && property.status !== "active" ? (
+                {property.status !== "rejected" && property.status !== "approved" ? (
                   <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void rejectListing(property.id)}>
                     Reject
                   </Button>
                 ) : null}
-                {property.status === "suspended" || property.status === "archived" ? (
+                {property.status === "archived" ? (
                   <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void restoreListing(property.id)}>
                     Restore
                   </Button>
                 ) : null}
-                {property.status === "active" ? (
+                {property.status === "approved" ? (
                   <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void suspendListing(property.id)}>
                     Suspend
                   </Button>

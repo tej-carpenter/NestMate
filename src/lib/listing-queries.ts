@@ -9,7 +9,7 @@ export async function getActiveListings() {
   // const result = await supabase
     .from<ListingRow>("listings")
     .select("*")
-    .eq("status", "active");
+    .eq("status", "approved");
 // console.log(result);
   console.log("SUPABASE LISTINGS:", data);
   console.log("SUPABASE ERROR:", error);

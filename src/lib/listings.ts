@@ -28,7 +28,7 @@ export async function createListing(payload: {
     .insert({
       ...restPayload,
       expires_at,
-      status: "pending",
+      status: "pending_review",
     });
 
   if (error) {

@@ -35,7 +35,7 @@ export default function AdminArchivedPropertiesPage() {
 
   async function handleRestore(id: string) {
     const supabase = createSupabaseBrowserClient();
-    await (supabase.from("listings") as any).update({ status: "active" }).eq("id", id);
+    await (supabase.from("listings") as any).update({ status: "approved" }).eq("id", id);
     refreshData();
   }
 

@@ -22,7 +22,7 @@ export async function GET(req: Request) {
 
     const listingSummary = {
       total: listings?.length || 0,
-      active: listings?.filter((l: any) => l.status === "active").length || 0,
+      active: listings?.filter((l: any) => l.status === "approved").length || 0,
       full: listings?.filter((l: any) => l.available_units <= 0 || l.status === "full").length || 0,
     };
 
