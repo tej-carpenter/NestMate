@@ -14,6 +14,7 @@ export async function createListing(payload: {
   gender_preference: string;
   expires_in_days?: string;
   available_units?: number;
+  images?: string[];
 }) {
   const supabase = createSupabaseBrowserClient();
 

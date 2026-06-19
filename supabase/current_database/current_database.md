@@ -186,3 +186,29 @@
 | `restored_at` | `timestamptz` |  Nullable |
 | `listing_snapshot` | `jsonb` |  |
 
+## Table `user_policy_acceptances`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `user_id` | `uuid` |  |
+| `policy_type` | `text` |  |
+| `policy_version` | `text` |  |
+| `accepted_at` | `timestamptz` |  |
+| `ip_address` | `text` |  Nullable |
+| `user_agent` | `text` |  Nullable |
+
+## Table `listing_views`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `listing_id` | `uuid` |  |
+| `viewer_id` | `uuid` |  Nullable |
+| `ip_hash` | `text` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+

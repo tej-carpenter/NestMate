@@ -14,6 +14,7 @@ import { createListing } from "@/lib/listings";
 import { readLocalSession } from "@/lib/session";
 import { listingWizardSchema, type ListingWizardInput } from "@/lib/validators/listing";
 import { createListingDraftAction, publishListingAction } from "@/actions/listings";
+import { uploadToCloudinary } from "@/lib/storage/cloudinary";
 
 const defaultValues: ListingWizardInput = {
   propertyType: "pg",
@@ -104,6 +105,7 @@ function parseDraft(): ListingWizardDraft | null {
 export function ListingWizard() {
   const [stepIndex, setStepIndex] = useState(0);
   const [uploadFiles, setUploadFiles] = useState<Array<{ name: string; size: number; type: string }>>([]);
+  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const hasHydratedDraftRef = useRef(false);
@@ -212,7 +214,19 @@ export function ListingWizard() {
     }
 
     startTransition(async () => {
-      const result = await publishListingAction(values);
+      setStatus("Uploading images...");
+      let uploadedUrls: string[] = [];
+      try {
+        uploadedUrls = await Promise.all(filesToUpload.map((f) => uploadToCloudinary(f)));
+      } catch (err: any) {
+        setStatus(`Image upload failed: ${err.message}`);
+        toast.error("Image upload failed.");
+        return;
+      }
+
+      const valuesWithImages = { ...values, images: uploadedUrls };
+
+      const result = await publishListingAction(valuesWithImages);
       if (!result.submittedForReview) {
         setStatus("Submission failed.");
         toast.error("Submission failed.");
@@ -239,6 +253,7 @@ export function ListingWizard() {
         gender_preference: result.listing.genderPreference,
         available_units: result.listing.availableUnits,
         expires_in_days: result.listing.expiresInDays,
+        images: result.listing.images,
       });
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(draftStorageKey);
@@ -415,15 +430,17 @@ export function ListingWizard() {
                 accept="image/*"
                 multiple
                 className="h-12 rounded-xl text-[15px] pt-3"
-                onChange={(event) =>
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  setFilesToUpload(files);
                   setUploadFiles(
-                    Array.from(event.target.files ?? []).map((file) => ({
+                    files.map((file) => ({
                       name: file.name,
                       size: file.size,
                       type: file.type,
                     })),
-                  )
-                }
+                  );
+                }}
               />
             </label>
             <div className="rounded-2xl border border-dashed border-[color:var(--border)] bg-[color:var(--surface)] p-6 text-[14px] text-[color:var(--muted)]">

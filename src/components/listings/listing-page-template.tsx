@@ -117,11 +117,11 @@ export default function ListingPageTemplate({
   currentUser: ListingActor | null;
   onDeleteListing?: (listingId: string) => void;
 }) {
-  const heroImages = [listing, ...inventory.filter((item) => item.slug !== listing.slug)].slice(0, 4);
+  const hasImages = listing.images && listing.images.length > 0;
+  const heroImageSrc = hasImages ? listing.images[0] : listing.thumbnail;
   const landmarks = cityLandmarks[listing.city] ?? cityLandmarks.Indore;
   const availabilityLabel = formatAvailability(listing);
   const hasResidentFeedback = (listing.reviewCount ?? 0) > 0;
-  const relatedImage = heroImages[1] ?? listing;
   const canManage = canEditListing(currentUser, listing);
   const isBookable = isPublicListingStatus(listing.status, listing.moderationState);
   const googleMapsUrl = resolveGoogleMapsUrl(
@@ -134,9 +134,20 @@ export default function ListingPageTemplate({
     <main className="mx-auto w-full max-w-7xl px-4 pb-28 pt-6 sm:px-6 lg:px-8">
       <ViewTracker slug={listing.slug} />
       {/* Edge-to-edge Hero Image */}
-      <div className="relative mb-10 h-[40vh] min-h-[300px] w-full overflow-hidden rounded-[24px] sm:h-[50vh] lg:h-[60vh]">
-        <Image src={listing.thumbnail} alt={listing.title} fill unoptimized sizes="100vw" className="object-cover" />
+      <div className="relative mb-6 h-[40vh] min-h-[300px] w-full overflow-hidden rounded-[24px] sm:h-[50vh] lg:h-[60vh]">
+        <Image src={heroImageSrc} alt={listing.title} fill unoptimized sizes="100vw" className="object-cover" />
       </div>
+
+      {/* Image Gallery */}
+      {hasImages && listing.images.length > 1 && (
+        <div className="mb-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {listing.images.slice(1).map((imgUrl, idx) => (
+            <div key={idx} className="relative aspect-video overflow-hidden rounded-xl bg-[color:var(--surface-strong)]">
+              <Image src={imgUrl} alt={`${listing.title} - view ${idx + 2}`} fill unoptimized className="object-cover" />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_400px] lg:items-start">
         <section className="space-y-12">

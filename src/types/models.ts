@@ -32,6 +32,7 @@ export type ListingBaseRecord = {
   amenities: string[];
   mapPosition: { left: string; top: string };
   thumbnail: string;
+  images: string[];
 };
 
 export interface ListingInventoryItem extends ListingBaseRecord {

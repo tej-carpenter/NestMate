@@ -24,4 +24,5 @@ export type ListingRow = {
   gender_preference: string | null;
 
   nestscore: number | null;
+  images: string[] | null;
 };

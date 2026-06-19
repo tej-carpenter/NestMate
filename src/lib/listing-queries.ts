@@ -98,7 +98,9 @@ export async function getActiveListings() {
         top: "50%",
       },
 
-      thumbnail: buildListingThumbnail({
+      images: row.images ?? [],
+
+      thumbnail: row.images && row.images.length > 0 ? row.images[0] : buildListingThumbnail({
         title: row.title,
         city: row.city,
         locality: row.locality,
@@ -209,7 +211,9 @@ export async function getListingById(id: string) {
       top: "50%",
     },
 
-    thumbnail: buildListingThumbnail({
+    images: data.images ?? [],
+
+    thumbnail: data.images && data.images.length > 0 ? data.images[0] : buildListingThumbnail({
       title: data.title,
       city: data.city,
       locality: data.locality,

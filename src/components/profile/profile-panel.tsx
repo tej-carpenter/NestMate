@@ -33,9 +33,9 @@ export function ProfilePanel() {
         if (sess?.phone || sess?.email) {
           const supabase = createSupabaseBrowserClient();
           Promise.all([
-            supabase.from("users").select("id").eq("email", sess.email || "").maybeSingle(),
-            (supabase.from("bookings") as any).select("id", { count: "exact" }).eq("user_phone", sess.phone || ""),
-            (supabase.from("transactions") as any).select("id", { count: "exact" }).eq("user_phone", sess.phone || "")
+            sess.email ? supabase.from("users").select("id").eq("email", sess.email).maybeSingle() : Promise.resolve({ data: null }),
+            sess.phone ? (supabase.from("bookings") as any).select("id", { count: "exact" }).eq("user_phone", sess.phone) : Promise.resolve({ count: 0 }),
+            sess.phone ? (supabase.from("transactions") as any).select("id", { count: "exact" }).eq("user_phone", sess.phone) : Promise.resolve({ count: 0 })
           ]).then(([{ data: user }, { count: bCount }, { count: pCount }]) => {
             if (active) {
               setUserStats({

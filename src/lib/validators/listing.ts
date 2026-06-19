@@ -30,6 +30,7 @@ export const listingWizardSchema = z.object({
   availableUnits: z.number().int().min(1),
   expiresInDays: z.enum(["30", "60", "90"]),
   upiQrUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  images: z.array(z.string()).optional(),
 });
 
 export type ListingWizardInput = z.infer<typeof listingWizardSchema>;
