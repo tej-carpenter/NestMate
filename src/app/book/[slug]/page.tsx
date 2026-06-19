@@ -12,6 +12,7 @@ import { formatPricePeriod } from "@/lib/pricing";
 import { loadSupabaseSessionProfile, readLocalSession } from "@/lib/session";
 import { isAuthenticatedSession } from "@/lib/auth/permissions";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { AvailabilityBadge } from "@/components/listings/availability-badge";
 
 export default function BookingPage({ params }: { params: Promise<{ slug: string }> | { slug: string } }) {
   const router = useRouter();
@@ -47,7 +48,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
       const { data: listingData } = await supabase
         .from("listings")
         .select(`
-          id, host_id, title, description, city, locality, space_type, price, price_type, nestscore
+          id, host_id, title, description, city, locality, space_type, price, price_type, nestscore, available_units
         `)
         .eq("id", resolvedParams.slug)
         .maybeSingle();
@@ -65,7 +66,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
           priceType: listingData.price_type,
           nestscore: listingData.nestscore ? Number(listingData.nestscore) : 0,
           reviewCount: listingData.nestscore ? 1 : 0, // Mock review count for NestScore UI
-          availableUnits: 1, // Defaulting to 1 since schema doesn't track inventory currently
+          availableUnits: listingData.available_units ?? 0,
           totalUnits: 1,
         });
       }
@@ -109,7 +110,6 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
   const selectedListing = listing;
   const isAuthenticated = isAuthenticatedSession(session);
   const hasResidentFeedback = (selectedListing.reviewCount ?? 0) > 0;
-  const hasAvailabilityData = selectedListing.totalUnits > 0 && selectedListing.availableUnits > 0;
 
   async function handleCreateBooking(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -275,7 +275,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
             </label>
 
             <div className="mt-8 flex items-center justify-end border-t border-[color:var(--border)] pt-8">
-              <Button type="submit" disabled={isSubmitting || !isAuthenticated} className="h-12 px-8 text-[15px]">
+              <Button type="submit" disabled={isSubmitting || !isAuthenticated || selectedListing.availableUnits <= 0} className="h-12 px-8 text-[15px]">
                 {isSubmitting ? "Creating booking..." : "Continue to payment"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -293,17 +293,24 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
             </div>
 
             <div className="grid gap-3 border-y border-[color:var(--border)] py-6">
-              {[
-                { label: "Selected units", value: quantity },
-                { label: "Move-in total", value: formatRupee(moveInTotal) },
-                { label: "Availability", value: hasAvailabilityData ? `${selectedListing.availableUnits}/${selectedListing.totalUnits}` : "Not listed yet" },
-                { label: "NestScore", value: hasResidentFeedback ? `${selectedListing.nestscore.toFixed(1)} / 5` : "New" },
-              ].map((item) => (
-                <div key={item.label} className="flex justify-between">
-                  <p className="text-[14px] font-medium text-[color:var(--muted)]">{item.label}</p>
-                  <p className="text-[14px] font-medium text-[color:var(--foreground)]">{item.value}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-[14px] font-medium text-[color:var(--muted)]">Selected units</p>
+                <p className="text-[14px] font-medium text-[color:var(--foreground)]">{quantity}</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-[14px] font-medium text-[color:var(--muted)]">Move-in total</p>
+                <p className="text-[14px] font-medium text-[color:var(--foreground)]">{formatRupee(moveInTotal)}</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-[14px] font-medium text-[color:var(--muted)]">Availability</p>
+                <div className="text-[14px] text-right">
+                  <AvailabilityBadge availableUnits={selectedListing.availableUnits} />
                 </div>
-              ))}
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-[14px] font-medium text-[color:var(--muted)]">NestScore</p>
+                <p className="text-[14px] font-medium text-[color:var(--foreground)]">{hasResidentFeedback ? `${selectedListing.nestscore.toFixed(1)} / 5` : "New"}</p>
+              </div>
             </div>
 
             <div className="rounded-xl bg-black/5 p-4 dark:bg-white/5">

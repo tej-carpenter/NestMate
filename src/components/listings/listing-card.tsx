@@ -10,6 +10,7 @@ import { ArrowRight, BadgeCheck, ExternalLink, Heart, MapPin, ShieldCheck, Spark
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AvailabilityBadge } from "@/components/listings/availability-badge";
 import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/cn";
 import { formatRupee } from "@/lib/format";
@@ -74,39 +75,12 @@ function getAmenityMeta(amenity: string): AmenityMeta {
   return { icon: Users, label: amenity };
 }
 
-function formatAvailability(listing: ListingInventoryItem) {
-  if (!isPublicListingStatus(listing.status, listing.moderationState) && listing.status !== "full") {
-    return { label: listing.status === "rejected" ? "Rejected" : listing.status === "expired" ? "Expired" : "Unavailable", tone: "danger" as const, width: 0 };
-  }
-
-  if (listing.totalUnits <= 0) {
-    return { label: "Availability not listed yet", tone: "muted" as const, width: 0 };
-  }
-
-  const occupied = Math.max(0, listing.totalUnits - listing.availableUnits);
-  const width = listing.totalUnits > 0 ? Math.round((occupied / listing.totalUnits) * 100) : 0;
-
-  if (listing.availableUnits <= 0 || listing.status === "full") {
-    return { label: "Fully Occupied", tone: "danger" as const, width };
-  }
-
-  if (listing.availableUnits <= 3) {
-    return { label: `Only ${listing.availableUnits} left`, tone: "warn" as const, width };
-  }
-
-  return {
-    label: "Available",
-    tone: "success" as const,
-    width,
-  };
-}
 
 function ListingCard({ listing, compact = false, className }: ListingCardProps) {
   const router = useRouter();
   const [saved, setSaved] = useState(false);
   const [session, setSession] = useState<ReturnType<typeof readLocalSession>>(null);
   const thumbnail = listing.thumbnail ?? buildListingThumbnail(listing);
-  const availability = useMemo(() => formatAvailability(listing), [listing]);
   const amenityCount = compact ? 2 : 3;
   const reviewCount = typeof listing.reviewCount === "number" ? listing.reviewCount : 0;
   const genderPreference = listing.genderPreference ?? "any";
@@ -203,19 +177,13 @@ function ListingCard({ listing, compact = false, className }: ListingCardProps) 
 
         <div className="mt-auto pt-6">
           <div className="flex items-center justify-between gap-2 border-t border-[color:var(--border)] pt-4">
-            <div className="flex items-center gap-2">
-              <div className={cn(
-                "h-2 w-2 rounded-full",
-                availability.tone === "danger" ? "bg-rose-500" :
-                availability.tone === "warn" ? "bg-amber-500" :
-                availability.tone === "success" ? "bg-emerald-500" : "bg-slate-400"
-              )} />
-              <span className="text-[13px] font-medium text-[color:var(--muted)]">{availability.label}</span>
+            <div className="flex items-center gap-2 text-[13px]">
+              <AvailabilityBadge availableUnits={listing.availableUnits} />
             </div>
             
-            {availability.label === "Fully Occupied" ? (
+            {listing.availableUnits <= 0 || listing.status === "full" ? (
               <Button disabled size="sm" className="h-9 px-4 text-[13px]">
-                Fully Occupied
+                Not Available
               </Button>
             ) : (
               <Button asChild size="sm" className="h-9 px-4 text-[13px]">

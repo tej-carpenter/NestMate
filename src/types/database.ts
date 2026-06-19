@@ -25,4 +25,5 @@ export type ListingRow = {
 
   nestscore: number | null;
   images: string[] | null;
+  available_units: number | null;
 };

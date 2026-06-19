@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, CalendarDays, ChevronDown, ExternalLink, Home, MapPin, ShieldCheck, Sparkles, Star, Users2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { AvailabilityBadge } from "@/components/listings/availability-badge";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -61,17 +62,7 @@ const propertyTypeLabels: Record<ListingInventoryItem["kind"], string> = {
   lodge: "Lodge",
 };
 
-function formatAvailability(listing: { status: ListingInventoryItem["status"]; moderationState: ListingInventoryItem["moderationState"]; availableUnits: number; totalUnits: number }) {
-  if (!isPublicListingStatus(listing.status, listing.moderationState)) {
-    return "Unavailable";
-  }
 
-  if (listing.totalUnits <= 0 || listing.availableUnits <= 0) {
-    return "Availability not listed yet";
-  }
-
-  return `${listing.availableUnits} of ${listing.totalUnits} units available`;
-}
 
 function getAmenityIcon(amenity: string) {
   const normalized = amenity.toLowerCase();
@@ -120,7 +111,6 @@ export default function ListingPageTemplate({
   const hasImages = listing.images && listing.images.length > 0;
   const heroImageSrc = hasImages ? listing.images[0] : listing.thumbnail;
   const landmarks = cityLandmarks[listing.city] ?? cityLandmarks.Indore;
-  const availabilityLabel = formatAvailability(listing);
   const hasResidentFeedback = (listing.reviewCount ?? 0) > 0;
   const canManage = canEditListing(currentUser, listing);
   const isBookable = isPublicListingStatus(listing.status, listing.moderationState);
@@ -287,15 +277,16 @@ export default function ListingPageTemplate({
             </div>
 
             <div className="grid gap-3">
-              {[
-                { label: "Availability", value: availabilityLabel },
-                { label: "Feedback", value: hasResidentFeedback ? `${listing.reviewCount} reviews` : "No reviews yet" },
-              ].map((item) => (
-                <div key={item.label} className="flex justify-between rounded-xl bg-black/5 p-4 dark:bg-white/5">
-                  <p className="text-[14px] font-medium text-[color:var(--muted)]">{item.label}</p>
-                  <p className="text-[14px] font-medium text-[color:var(--foreground)]">{item.value}</p>
+              <div className="flex items-center justify-between rounded-xl bg-black/5 p-4 dark:bg-white/5">
+                <p className="text-[14px] font-medium text-[color:var(--muted)]">Availability</p>
+                <div className="text-[14px] text-right">
+                  <AvailabilityBadge availableUnits={listing.availableUnits} />
                 </div>
-              ))}
+              </div>
+              <div className="flex items-center justify-between rounded-xl bg-black/5 p-4 dark:bg-white/5">
+                <p className="text-[14px] font-medium text-[color:var(--muted)]">Feedback</p>
+                <p className="text-[14px] font-medium text-[color:var(--foreground)]">{hasResidentFeedback ? `${listing.reviewCount} reviews` : "No reviews yet"}</p>
+              </div>
             </div>
 
             {hostProfile ? <HostProfileCard host={hostProfile} currentListingSlug={listing.slug} compact /> : null}

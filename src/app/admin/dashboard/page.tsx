@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
+import { AvailabilityBadge } from "@/components/listings/availability-badge";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { RouteAccessGate } from "@/components/auth/route-access-gate";
@@ -183,17 +184,6 @@ export default function AdminDashboardPage() {
     refresh();
   }
 
-  function formatAvailability(listing: (typeof listings)[number]) {
-    if (!isPublicListingStatus(listing.status, listing.moderationState)) {
-      return "Unavailable";
-    }
-
-    if (listing.totalUnits <= 0 || listing.availableUnits <= 0) {
-      return "Availability not listed yet";
-    }
-
-    return `${listing.availableUnits}/${listing.totalUnits} available`;
-  }
 
   return (
     <RouteAccessGate
@@ -332,7 +322,9 @@ export default function AdminDashboardPage() {
                   </Chip>
                 ))}
               </div>
-              <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">Units: {formatAvailability(property)}</p>
+              <div className="mt-4 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                Units: <AvailabilityBadge availableUnits={property.available_units ?? 0} />
+              </div>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row flex-wrap">
                 <Button asChild variant="outline" className="sm:flex-1 min-w-[100px]">
                   <Link href={`/host/listings/new?edit=${property.slug}`}>Edit</Link>

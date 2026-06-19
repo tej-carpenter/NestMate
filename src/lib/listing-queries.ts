@@ -115,7 +115,7 @@ export async function getActiveListings() {
 
       totalUnits: 1,
 
-      availableUnits: 1,
+      availableUnits: row.available_units ?? 0,
 
       hostUserPhone: undefined,
     };
@@ -227,7 +227,7 @@ export async function getListingById(id: string) {
     kind: spaceType,
 
     totalUnits: 1,
-    availableUnits: 1,
+    availableUnits: data.available_units ?? 0,
 
     hostUserPhone: undefined,
   };
