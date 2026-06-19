@@ -172,7 +172,9 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
       setStatus("Booking created. Redirecting to payment...");
       router.push(`/payment/${booking.id}`);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Unable to create booking right now.");
+      console.log(error);
+      const errorMessage = error instanceof Error ? error.message : ((error as any)?.message || "Unable to create booking right now.");
+      setStatus(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
