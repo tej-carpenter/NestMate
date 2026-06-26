@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
 import Link from "next/link";
 import { BadgeCheck, CalendarDays, ChevronDown, ExternalLink, Home, MapPin, ShieldCheck, Sparkles, Star, Users2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -125,7 +126,7 @@ export default function ListingPageTemplate({
       <ViewTracker slug={listing.slug} />
       {/* Edge-to-edge Hero Image */}
       <div className="relative mb-6 h-[40vh] min-h-[300px] w-full overflow-hidden rounded-[24px] sm:h-[50vh] lg:h-[60vh]">
-        <Image src={heroImageSrc} alt={listing.title} fill unoptimized sizes="100vw" className="object-cover" />
+        <SafeImage src={heroImageSrc} fallbackSrc={listing.thumbnail} alt={listing.title} fill unoptimized sizes="100vw" className="object-cover" />
       </div>
 
       {/* Image Gallery */}
@@ -133,7 +134,7 @@ export default function ListingPageTemplate({
         <div className="mb-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {listing.images.slice(1).map((imgUrl, idx) => (
             <div key={idx} className="relative aspect-video overflow-hidden rounded-xl bg-[color:var(--surface-strong)]">
-              <Image src={imgUrl} alt={`${listing.title} - view ${idx + 2}`} fill unoptimized className="object-cover" />
+              <SafeImage src={imgUrl} fallbackSrc={listing.thumbnail} alt={`${listing.title} - view ${idx + 2}`} fill unoptimized className="object-cover" />
             </div>
           ))}
         </div>
@@ -313,6 +314,19 @@ export default function ListingPageTemplate({
             <Button asChild className="w-full h-12 text-[15px]" disabled={!isBookable}>
               <Link href={`/book/${listing.slug}`}>{isBookable ? "Book now" : "Unavailable"}</Link>
             </Button>
+
+            {listing.upiId ? (
+              <div className="rounded-xl border border-teal-200/70 bg-teal-50 p-4 dark:border-teal-900/40 dark:bg-teal-900/10">
+                <p className="text-[13px] font-semibold text-teal-900/80 dark:text-teal-100/80 mb-2">Alternative Payment Method</p>
+                <div className="flex flex-col gap-1 rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
+                  <p className="text-[12px] text-[color:var(--muted)]">Host UPI ID</p>
+                  <p className="font-[family-name:var(--font-display)] text-[15px] font-bold text-[color:var(--foreground)] break-all select-all">{listing.upiId}</p>
+                </div>
+                <p className="mt-3 text-[12px] text-teal-800/70 dark:text-teal-200/60 leading-relaxed">
+                  This payment method is handled directly between the guest and host.
+                </p>
+              </div>
+            ) : null}
           </Card>
         </aside>
       </div>

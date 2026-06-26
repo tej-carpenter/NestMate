@@ -15,6 +15,7 @@ export async function createListing(payload: {
   expires_in_days?: string;
   available_units?: number;
   images?: string[];
+  upi_id?: string;
 }) {
   const supabase = createSupabaseBrowserClient();
 
@@ -22,12 +23,17 @@ export async function createListing(payload: {
     ? new Date(Date.now() + parseInt(payload.expires_in_days) * 24 * 60 * 60 * 1000).toISOString()
     : null;
 
-  const { expires_in_days, ...restPayload } = payload;
+  const { expires_in_days, upi_id, ...restPayload } = payload;
+  let finalDescription = payload.description;
+  if (upi_id) {
+    finalDescription = `${finalDescription}\n\n---UPI_ID:${upi_id}---`;
+  }
 
   const { data, error } = await supabase
     .from("listings")
     .insert({
       ...restPayload,
+      description: finalDescription,
       expires_at,
       status: "pending_review",
     });

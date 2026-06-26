@@ -20,7 +20,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ listing
     // 1. Get the listing ID and check if it exists
     const { data: listing } = await (supabase.from("listings") as any)
       .select("id")
-      .eq("slug", slug)
+      .eq("id", slug)
       .single();
       
     if (!listing) {

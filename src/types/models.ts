@@ -33,6 +33,7 @@ export type ListingBaseRecord = {
   mapPosition: { left: string; top: string };
   thumbnail: string;
   images: string[];
+  upiId?: string | null;
 };
 
 export interface ListingInventoryItem extends ListingBaseRecord {

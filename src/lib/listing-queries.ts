@@ -8,7 +8,7 @@ export async function getActiveListings() {
   const { data, error } = await supabase
   // const result = await supabase
     .from<ListingRow>("listings")
-    .select("*")
+    .select("*, reviews(count)")
     .eq("status", "approved");
 // console.log(result);
   console.log("SUPABASE LISTINGS:", data);
@@ -75,7 +75,7 @@ export async function getActiveListings() {
 
       verified: false,
 
-      reviewCount: 0,
+      reviewCount: row.reviews?.[0]?.count ?? 0,
 
       status: "approved",
 
@@ -89,7 +89,10 @@ export async function getActiveListings() {
       expiresAt: null,
       archivedAt: null,
 
-      description: row.description ?? "",
+      description: (() => {
+        let desc = row.description ?? "";
+        return desc.replace(/\n\n---UPI_ID:.*?---/, "");
+      })(),
 
       amenities: row.amenities ?? [],
 
@@ -108,7 +111,7 @@ export async function getActiveListings() {
         verified: false,
         nestscore: Number(row.nestscore ?? 0),
         status: "approved",
-        reviewCount: 0,
+        reviewCount: row.reviews?.[0]?.count ?? 0,
       }),
 
       kind: spaceType,
@@ -116,6 +119,12 @@ export async function getActiveListings() {
       totalUnits: 1,
 
       availableUnits: row.available_units ?? 0,
+
+      upiId: (() => {
+        if (row.upi_id) return row.upi_id;
+        const match = (row.description ?? "").match(/---UPI_ID:(.*?)---/);
+        return match ? match[1] : undefined;
+      })(),
 
       hostUserPhone: undefined,
     };
@@ -138,6 +147,13 @@ export async function getListingById(id: string) {
   if (!data) {
     return null;
   }
+
+  let actualReviewCount = 0;
+  const { count } = await (supabase
+    .from("reviews") as any)
+    .select("*", { count: "exact", head: true })
+    .eq("listing_id", data.id);
+  if (count) actualReviewCount = count;
 
 
 
@@ -189,7 +205,7 @@ export async function getListingById(id: string) {
     nestscore: Number(data.nestscore ?? 0),
 
     verified: false,
-    reviewCount: 0,
+    reviewCount: actualReviewCount,
 
     status: "approved",
     moderationState: "active",
@@ -202,7 +218,10 @@ export async function getListingById(id: string) {
     expiresAt: null,
     archivedAt: null,
 
-    description: data.description ?? "",
+    description: (() => {
+      let desc = data.description ?? "";
+      return desc.replace(/\n\n---UPI_ID:.*?---/, "");
+    })(),
 
     amenities: data.amenities ?? [],
 
@@ -221,7 +240,7 @@ export async function getListingById(id: string) {
       verified: false,
       nestscore: Number(data.nestscore ?? 0),
       status: "approved",
-      reviewCount: 0,
+      reviewCount: actualReviewCount,
     }),
 
     kind: spaceType,
@@ -230,5 +249,11 @@ export async function getListingById(id: string) {
     availableUnits: data.available_units ?? 0,
 
     hostUserPhone: undefined,
+
+    upiId: (() => {
+      if (data.upi_id) return data.upi_id;
+      const match = (data.description ?? "").match(/---UPI_ID:(.*?)---/);
+      return match ? match[1] : undefined;
+    })(),
   };
 }

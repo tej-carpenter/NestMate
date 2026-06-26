@@ -24,4 +24,5 @@ export interface MockProperty {
   amenities: string[];
   mapPosition: { left: string; top: string };
   thumbnail: string;
+  upiId?: string | null;
 }

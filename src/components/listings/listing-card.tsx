@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -104,8 +104,9 @@ function ListingCard({ listing, compact = false, className }: ListingCardProps) 
   return (
     <Card className={cn("group flex flex-col overflow-hidden border-0 bg-[color:var(--surface)] shadow-sm shadow-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:hover:shadow-[0_8px_30px_rgba(255,255,255,0.04)]", className)}>
       <Link href={`/listings/${listing.slug}`} className="block relative aspect-[4/3] overflow-hidden">
-        <Image
+        <SafeImage
           src={thumbnail}
+          fallbackSrc={buildListingThumbnail(listing)}
           alt={listing.title}
           fill
           unoptimized

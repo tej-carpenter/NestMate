@@ -34,6 +34,7 @@ const defaultValues: ListingWizardInput = {
   // required and are no longer used in the wizard UI.
   latitude: undefined,
   longitude: undefined,
+  upiId: "",
 };
 
 const draftStorageKey = "nestmate.listingDraft.v1";
@@ -55,7 +56,7 @@ const stepDefinitions = [
   },
   {
     title: "Pricing & Payment",
-    fields: ["price", "priceType"] as const,
+    fields: ["price", "priceType", "upiId"] as const,
   },
   {
     title: "Availability",
@@ -213,6 +214,12 @@ export function ListingWizard() {
       return;
     }
 
+    if (uploadFiles.length > 0 && filesToUpload.length === 0) {
+      setStatus("Image files were lost due to page reload. Please go back to the Photos step and re-select your images.");
+      toast.error("Please re-select your images.");
+      return;
+    }
+
     startTransition(async () => {
       setStatus("Uploading images...");
       let uploadedUrls: string[] = [];
@@ -254,6 +261,7 @@ export function ListingWizard() {
         available_units: result.listing.availableUnits,
         expires_in_days: result.listing.expiresInDays,
         images: result.listing.images,
+        upi_id: result.listing.upiId,
       });
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(draftStorageKey);
@@ -377,6 +385,11 @@ export function ListingWizard() {
                 <option value="daily">Daily</option>
                 <option value="bedspace">Bed space</option>
               </select>
+            </label>
+            <label className="space-y-2 flex flex-col md:col-span-2">
+              <span className="text-[14px] font-semibold text-[color:var(--foreground)]">UPI ID <span className="text-red-500 ml-1">*</span></span>
+              <Input {...register("upiId")} placeholder="yourname@bank" className="h-12 rounded-xl text-[15px]" />
+              <p className="text-[13px] text-[color:var(--muted)]">Alternative payment option for guests. Example: host@oksbi</p>
             </label>
           </div>
         ) : null}

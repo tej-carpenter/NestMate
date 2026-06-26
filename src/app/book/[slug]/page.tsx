@@ -53,6 +53,15 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
         .eq("id", resolvedParams.slug)
         .maybeSingle();
 
+      let actualReviewCount = 0;
+      if (listingData) {
+        const { count } = await (supabase
+          .from("reviews") as any)
+          .select("*", { count: "exact", head: true })
+          .eq("listing_id", listingData.id);
+        if (count) actualReviewCount = count;
+      }
+
       if (active && listingData) {
         setListing({
           id: listingData.id,
@@ -65,7 +74,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
           price: Number(listingData.price),
           priceType: listingData.price_type,
           nestscore: listingData.nestscore ? Number(listingData.nestscore) : 0,
-          reviewCount: listingData.nestscore ? 1 : 0, // Mock review count for NestScore UI
+          reviewCount: actualReviewCount,
           availableUnits: listingData.available_units ?? 0,
           totalUnits: 1,
         });

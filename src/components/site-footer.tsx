@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { siteConfig } from "@/lib/site";
 
 export function SiteFooter() {
   return (
@@ -36,7 +37,7 @@ export function SiteFooter() {
             <h3 className="text-sm font-semibold uppercase tracking-wider text-[color:var(--foreground)]">Connect</h3>
             <ul className="mt-6 space-y-4">
               <li>
-                <a className="text-[15px] font-medium text-[color:var(--muted)] transition-colors hover:text-[color:var(--foreground)]" href="https://www.instagram.com/nestmateofficial/" target="_blank" rel="noopener noreferrer">Instagram</a>
+                <a className="text-[15px] font-medium text-[color:var(--muted)] transition-colors hover:text-[color:var(--foreground)]" href={siteConfig.links?.instagram || "#"} target="_blank" rel="noopener noreferrer">Instagram</a>
               </li>
               <li>
                 <a className="text-[15px] font-medium text-[color:var(--muted)] transition-colors hover:text-[color:var(--foreground)]" href="#" target="_blank" rel="noopener noreferrer">LinkedIn</a>
