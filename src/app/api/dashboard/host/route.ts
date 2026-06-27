@@ -15,10 +15,11 @@ export async function GET(req: Request) {
 
     const hostId = user.id;
 
-    // 2. Fetch Host Listings for summary
+    // 2. Fetch Host Listings for summary and management
     const { data: listings } = await (supabase.from("listings") as any)
-      .select("id, status, available_units, total_units")
-      .eq("owner_id", hostId);
+      .select("id, title, status, available_units, total_units, kind")
+      .eq("owner_id", hostId)
+      .order("created_at", { ascending: false });
 
     const listingSummary = {
       total: listings?.length || 0,
@@ -30,8 +31,21 @@ export async function GET(req: Request) {
 
     // 3. Fetch Bookings
     const { data: bookings } = await (supabase.from("bookings") as any)
-      .select("id, booking_status, payment_status, rent_amount, created_at")
-      .eq("host_id", hostId);
+      .select(`
+        id, 
+        booking_status, 
+        payment_status, 
+        rent_amount, 
+        created_at, 
+        move_in_date, 
+        move_out_date,
+        guest_count,
+        quantity,
+        users:guest_id (full_name, phone, email),
+        listings:listing_id (title)
+      `)
+      .eq("host_id", hostId)
+      .order("created_at", { ascending: false });
 
     const activeBookings = bookings?.filter(
       (b: any) => ["pending", "confirmed", "active"].includes(b.booking_status)
@@ -113,6 +127,8 @@ export async function GET(req: Request) {
       unreadMessages,
       nextPayout,
       listingSummary,
+      recentBookings: bookings?.slice(0, 20) || [], // Return top 20 recent bookings
+      hostListings: listings || [],
       activityGraph: totalActivity > 0 ? activityGraph : [], // Return empty if absolutely no activity
     });
 

@@ -206,12 +206,21 @@ export default function GuestBookingsPage() {
                           <p className="mt-1 text-[16px] font-semibold capitalize text-[color:var(--foreground)]">{payment?.payment_status ?? "Pending"}</p>
                         </div>
                       </div>
-                      <Button asChild variant="outline" className="h-10 px-6 font-semibold">
-                        <Link href={`/payment/${booking.id}`}>
-                          Open Payment
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </Link>
-                      </Button>
+                      {booking.status === "confirmed" ? (
+                        <Button asChild className="h-10 px-6 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">
+                          <Link href={`/payment/${booking.id}/receipt`}>
+                            View Receipt
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button asChild variant="outline" className="h-10 px-6 font-semibold">
+                          <Link href={`/payment/${booking.id}`}>
+                            Open Payment
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </Card>

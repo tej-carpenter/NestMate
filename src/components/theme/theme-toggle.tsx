@@ -28,42 +28,18 @@ export function ThemeToggle() {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="hidden sm:inline-flex items-center rounded-[1.1rem] border border-[color:var(--border)] bg-[color:var(--surface)] p-1 shadow-sm">
-        {options.map((option) => {
-          const Icon = option.icon;
-
-          return (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setTheme(option.value)}
-              className={cn(
-                "inline-flex h-9 items-center gap-2 rounded-[0.9rem] px-3 text-xs font-semibold transition",
-                theme === option.value
-                  ? "bg-[color:var(--foreground)] text-[color:var(--background)]"
-                  : "text-[color:var(--foreground)] hover:bg-black/5 dark:hover:bg-white/10",
-              )}
-              aria-pressed={theme === option.value}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
-      <button
-        type="button"
-        onClick={() => {
-          const currentIndex = options.findIndex((option) => option.value === theme);
-          const nextIndex = (currentIndex + 1) % options.length;
-          setTheme(options[nextIndex].value);
-        }}
-        className="inline-flex h-9 items-center gap-2 rounded-[0.9rem] border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-xs font-semibold text-[color:var(--foreground)] shadow-sm sm:hidden"
-      >
-        <ActiveIcon className="h-3.5 w-3.5" />
-        {activeOption.label}
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={() => {
+        const currentIndex = options.findIndex((option) => option.value === theme);
+        const nextIndex = (currentIndex + 1) % options.length;
+        setTheme(options[nextIndex].value);
+      }}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] shadow-sm hover:bg-black/5 dark:hover:bg-white/10 transition"
+      aria-label={`Toggle theme (Current: ${activeOption.label})`}
+      title={`Toggle theme (Current: ${activeOption.label})`}
+    >
+      <ActiveIcon className="h-4 w-4" />
+    </button>
   );
 }

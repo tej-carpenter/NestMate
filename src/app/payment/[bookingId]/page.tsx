@@ -193,9 +193,9 @@ export default function PaymentPage({ params }: { params: Promise<{ bookingId: s
                   <p className="mt-2 text-[15px] text-emerald-800 dark:text-emerald-200">Your transaction was successful. The booking is now confirmed.</p>
                   <Button 
                     className="mt-8 h-12 px-8 text-[15px] w-full sm:w-auto"
-                    onClick={() => router.push("/guest/bookings")}
+                    onClick={() => router.push(`/payment/${booking.id}/receipt`)}
                   >
-                    View My Bookings
+                    View Receipt
                   </Button>
                 </div>
               ) : (

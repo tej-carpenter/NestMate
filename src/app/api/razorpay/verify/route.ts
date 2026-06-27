@@ -53,17 +53,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Failed to create transaction record" }, { status: 500 });
     }
 
-    // 3. Update Booking Status
-    const { error: updateError } = await (supabase.from("bookings") as any)
-      .update({
-        booking_status: "confirmed",
-        payment_status: "completed",
-      })
-      .eq("id", booking.id);
+    // 3. Update Booking Status and Decrement Listing Availability via RPC
+    const { error: rpcError } = await (supabase as any).rpc("confirm_booking_payment_transaction", {
+      p_booking_id: booking.id,
+    });
 
-    if (updateError) {
-      console.error("Booking Update Error:", updateError);
-      return NextResponse.json({ error: "Failed to update booking status" }, { status: 500 });
+    if (rpcError) {
+      console.error("Booking Confirmation Error:", rpcError);
+      return NextResponse.json({ error: "Failed to confirm booking and update availability" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
