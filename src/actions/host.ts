@@ -13,7 +13,7 @@ export async function updateListingAvailability(listingId: string, newUnits: num
 
   // Ensure the user owns this listing
   const { data: listing, error: fetchError } = await (supabase.from("listings") as any)
-    .select("owner_id")
+    .select("host_id")
     .eq("id", listingId)
     .single();
 
@@ -21,7 +21,7 @@ export async function updateListingAvailability(listingId: string, newUnits: num
     throw new Error("Listing not found");
   }
 
-  if (listing.owner_id !== user.id) {
+  if (listing.host_id !== user.id) {
     throw new Error("Forbidden: You do not own this listing");
   }
 

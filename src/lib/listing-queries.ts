@@ -8,7 +8,7 @@ export async function getActiveListings() {
   const { data, error } = await supabase
   // const result = await supabase
     .from<ListingRow>("listings")
-    .select("*, reviews(count)")
+    .select("*, reviews(count), bookings(count)")
     .eq("status", "approved");
 // console.log(result);
   console.log("SUPABASE LISTINGS:", data);
@@ -37,7 +37,7 @@ export async function getActiveListings() {
 
       ownerId: row.host_id,
 
-      createdAt: Date.now(),
+      createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
 
       title: row.title,
 
@@ -127,6 +127,7 @@ export async function getActiveListings() {
       })(),
 
       hostUserPhone: undefined,
+      bookingCount: row.bookings?.[0]?.count ?? 0,
     };
   });
 }

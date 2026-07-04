@@ -19,6 +19,7 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
   const [mounted, setMounted] = useState(false);
   const [session, setSession] = useState<ReturnType<typeof readLocalSession>>(null);
   const [listing, setListing] = useState<any>(null);
+  const [isProfileComplete, setIsProfileComplete] = useState<boolean | null>(null);
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
   const [guestCount, setGuestCount] = useState(1);
@@ -45,6 +46,23 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
       }
 
       const supabase = createSupabaseBrowserClient();
+      
+      if (currentSession?.userId) {
+        const { data: userProfile } = await supabase
+          .from("users")
+          .select("age, gender, government_id_type, government_id, address")
+          .eq("id", currentSession.userId)
+          .maybeSingle();
+        
+        if (active) {
+          if (userProfile && userProfile.age && userProfile.gender && userProfile.government_id_type && userProfile.government_id && userProfile.address) {
+            setIsProfileComplete(true);
+          } else {
+            setIsProfileComplete(false);
+          }
+        }
+      }
+
       const { data: listingData } = await supabase
         .from("listings")
         .select(`
@@ -138,6 +156,11 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
       return;
     }
 
+    if (isProfileComplete === false) {
+      setStatus("Your profile is incomplete. Please complete your profile to book.");
+      return;
+    }
+
     setIsSubmitting(true);
     setStatus(null);
 
@@ -218,18 +241,28 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
                   <Link href="/auth/login">Sign in</Link>
                 </Button>
               </div>
+            ) : isProfileComplete === false ? (
+              <div className="mb-8 rounded-xl border border-rose-200/70 bg-rose-50 p-6 text-center dark:border-rose-900/40 dark:bg-rose-900/10">
+                <p className="text-[15px] font-medium text-rose-900/90 dark:text-rose-100/90">Profile Incomplete</p>
+                <p className="mt-2 text-[14px] text-rose-800/80 dark:text-rose-200/80">You must complete your Identity & Legal Details (Age, Gender, Govt ID, Address) before you can book this property.</p>
+                <Button asChild className="mt-5">
+                  <Link href="/profile?onboarding=true">Complete Profile</Link>
+                </Button>
+              </div>
             ) : null}
 
-            <div className="grid gap-8 sm:grid-cols-2">
-              <div className="space-y-6">
-                <h3 className="text-[18px] font-semibold text-[color:var(--foreground)]">Stay dates</h3>
-                
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="space-y-2">
-                    <span className="text-[14px] font-medium text-[color:var(--foreground)]">Check-in</span>
-                    <Input type="date" className="h-12 rounded-xl" value={checkInDate} onChange={(event) => setCheckInDate(event.target.value)} />
-                  </label>
-                  <label className="space-y-2">
+            {isAuthenticated && isProfileComplete !== false && (
+              <>
+                <div className="grid gap-8 sm:grid-cols-2">
+                  <div className="space-y-6">
+                    <h3 className="text-[18px] font-semibold text-[color:var(--foreground)]">Stay dates</h3>
+                    
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="space-y-2">
+                        <span className="text-[14px] font-medium text-[color:var(--foreground)]">Check-in</span>
+                        <Input type="date" className="h-12 rounded-xl" value={checkInDate} onChange={(event) => setCheckInDate(event.target.value)} />
+                      </label>
+                      <label className="space-y-2">
                     <span className="text-[14px] font-medium text-[color:var(--foreground)]">Check-out</span>
                     <Input type="date" className="h-12 rounded-xl" value={checkOutDate} onChange={(event) => setCheckOutDate(event.target.value)} />
                   </label>
@@ -283,12 +316,14 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
               </span>
             </label>
 
-            <div className="mt-8 flex items-center justify-end border-t border-[color:var(--border)] pt-8">
-              <Button type="submit" disabled={isSubmitting || !isAuthenticated || selectedListing.availableUnits <= 0} className="h-12 px-8 text-[15px]">
-                {isSubmitting ? "Creating booking..." : "Continue to payment"}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
+              <div className="mt-8 flex items-center justify-end border-t border-[color:var(--border)] pt-8">
+                <Button type="submit" disabled={isSubmitting || !isAuthenticated || selectedListing.availableUnits <= 0} className="h-12 px-8 text-[15px]">
+                  {isSubmitting ? "Creating booking..." : "Continue to payment"}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </>
+            )}
           </form>
 
           {status ? <p className="border-t border-[color:var(--border)] px-6 py-4 text-[14px] text-[color:var(--muted)]" aria-live="polite">{status}</p> : null}

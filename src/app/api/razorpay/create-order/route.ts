@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import Razorpay from "razorpay";
+import { paymentService } from "@/lib/payments/payment-service";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
@@ -26,30 +26,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Booking is not pending" }, { status: 400 });
     }
 
-    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      return NextResponse.json({ error: "Razorpay keys not configured" }, { status: 500 });
-    }
-
-    // Initialize Razorpay
-    const razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
-    });
-
     const amountInPaise = Math.round(booking.rent_amount * 100);
 
-    const options = {
+    const order = await paymentService.createOrder({
       amount: amountInPaise,
       currency: "INR",
-      receipt: `${booking.id}`,
-    };
-    console.log (options.receipt);
-
-    const order = await razorpay.orders.create(options);
+      receiptId: `${booking.id}`,
+      bookingId: booking.id,
+    });
 
     return NextResponse.json({ order });
   } catch (error) {
-    console.error("Razorpay Create Order Error:", error);
-    return NextResponse.json({ error: "Failed to create Razorpay order" }, { status: 500 });
+    console.error("Payment Create Order Error:", error);
+    return NextResponse.json({ error: "Failed to create payment order" }, { status: 500 });
   }
 }

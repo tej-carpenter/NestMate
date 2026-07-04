@@ -9,7 +9,7 @@ vi.mock("@/lib/supabase/server", () => ({
     from: vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({ data: { owner_id: "host-123" }, error: null }),
+    single: vi.fn().mockResolvedValue({ data: { host_id: "host-123" }, error: null }),
     rpc: vi.fn().mockResolvedValue({ error: null }),
   })),
 }));

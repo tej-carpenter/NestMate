@@ -63,7 +63,6 @@ export function SignupForm() {
       });
 
       if (error) {
-        console.error("SIGNUP ERROR", error);
         throw error;
       }
 
@@ -88,14 +87,12 @@ export function SignupForm() {
 
       if (session) {
         setStatus("Account created! Signing you in...");
-        router.push(getPostLoginRoute(session.role));
+        router.push("/profile?onboarding=true");
         return;
       }
 
       setStatus("Account created. Check your email to confirm your account before logging in.");
       } catch (error) {
-        console.error("FULL ERROR", error);
-
         setStatus(
           error instanceof Error
             ? error.message

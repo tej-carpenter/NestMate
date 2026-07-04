@@ -8,6 +8,11 @@ export interface UserRecord {
   role: UserRole;
   aadhaar_verified: boolean;
   created_at: string;
+  gender?: string | null;
+  age?: number | null;
+  government_id_type?: string | null;
+  government_id?: string | null;
+  address?: string | null;
 }
 
 export interface ListingRecord {
@@ -24,6 +29,8 @@ export interface ListingRecord {
   // listing creation; they are kept for backwards compatibility.
   latitude: number | null;
   longitude: number | null;
+  total_units: number;
+  available_units: number;
   space_type: "pg" | "room" | "bed" | "lodge" | "apartment";
   price: number;
   price_type: "monthly" | "daily" | "bedspace";

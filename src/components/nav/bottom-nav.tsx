@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Home, Search, MapPinned, PlusCircle, UserRound, ShieldCheck } from "lucide-react";
+import { Home, Search, MapPinned, PlusCircle, UserRound, ShieldCheck, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { getAccountLabel, getPostLoginRoute, loadSupabaseSessionProfile, readLocalSession, subscribeToSupabaseAuth } from "@/lib/session";
 import { isAdminRole } from "@/lib/auth/roles";
@@ -10,6 +10,7 @@ import { isAdminRole } from "@/lib/auth/roles";
 const baseItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/search", label: "Search", icon: Search },
+  { href: "/host/dashboard", label: "Host", icon: LayoutDashboard },
   { href: "/host/listings/new", label: "List", icon: PlusCircle },
 ] as const;
 
@@ -49,7 +50,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[color:var(--border)] bg-[color:var(--surface)]/96 px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur-xl md:hidden">
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-4 gap-2">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-5 gap-2">
         {items.map((item) => {
           const Icon = item.icon;
 

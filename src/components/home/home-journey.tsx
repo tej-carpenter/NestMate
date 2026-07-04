@@ -46,8 +46,8 @@ export function HomeJourney() {
 
   const verifiedCount = useMemo(() => listings.filter((listing) => listing.verified).length, [listings]);
   const cityCount = useMemo(() => new Set(listings.map((listing) => listing.city)).size, [listings]);
-  const approvedCount = useMemo(() => listings.length, [listings]);
-  const featuredListings = useMemo(() => listings.slice(0, 4), [listings]);
+  const mostPopularListings = useMemo(() => [...listings].sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0)).slice(0, 8), [listings]);
+  const newlyAddedListings = useMemo(() => [...listings].sort((a, b) => b.createdAt - a.createdAt).slice(0, 8), [listings]);
 
   return (
     <div className="space-y-8 pb-24 sm:space-y-12">
@@ -91,25 +91,61 @@ export function HomeJourney() {
         })}
       </section>
 
-      {/* Featured Listings */}
+      {/* Most Popular Listings */}
       <section className="pt-8">
         <div className="flex items-end justify-between gap-4">
           <div>
             <h2 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-[color:var(--foreground)] sm:text-4xl">
-              Featured stays
+              Most Popular
             </h2>
-            <p className="mt-2 text-[15px] text-[color:var(--muted)]">Handpicked, highly-rated accommodations.</p>
+            <p className="mt-2 text-[15px] text-[color:var(--muted)]">Our most booked and highly-rated accommodations.</p>
           </div>
           <Button asChild variant="ghost" className="hidden sm:flex">
             <Link href="/search">View all stays →</Link>
           </Button>
         </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          {featuredListings.length > 0 ? (
-            featuredListings.map((listing) => <ListingCard key={listing.id} listing={listing} />)
+        <div className="mt-8 flex gap-4 sm:gap-6 overflow-x-auto pb-6 snap-x snap-mandatory px-[7.5vw] sm:px-0 -mx-4 sm:mx-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {mostPopularListings.length > 0 ? (
+            mostPopularListings.map((listing) => (
+              <div key={listing.id} className="w-[85vw] sm:w-[400px] shrink-0 snap-center sm:snap-start">
+                <ListingCard listing={listing} />
+              </div>
+            ))
           ) : (
-            <Card className="col-span-full p-12 text-center border-dashed bg-transparent shadow-none">
+            <Card className="w-full p-12 text-center border-dashed bg-transparent shadow-none">
+              <p className="text-[15px] text-[color:var(--muted)]">No verified listings available yet. Be the first to host!</p>
+              <Button asChild variant="outline" className="mt-4">
+                <Link href="/host/listings/new">Add a property</Link>
+              </Button>
+            </Card>
+          )}
+        </div>
+      </section>
+
+      {/* Newly Added Listings */}
+      <section className="pt-8">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-[color:var(--foreground)] sm:text-4xl">
+              Newly Added
+            </h2>
+            <p className="mt-2 text-[15px] text-[color:var(--muted)]">Fresh listings recently added to our platform.</p>
+          </div>
+          <Button asChild variant="ghost" className="hidden sm:flex">
+            <Link href="/search">View all stays →</Link>
+          </Button>
+        </div>
+
+        <div className="mt-8 flex gap-4 sm:gap-6 overflow-x-auto pb-6 snap-x snap-mandatory px-[7.5vw] sm:px-0 -mx-4 sm:mx-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {newlyAddedListings.length > 0 ? (
+            newlyAddedListings.map((listing) => (
+              <div key={listing.id} className="w-[85vw] sm:w-[400px] shrink-0 snap-center sm:snap-start">
+                <ListingCard listing={listing} />
+              </div>
+            ))
+          ) : (
+            <Card className="w-full p-12 text-center border-dashed bg-transparent shadow-none">
               <p className="text-[15px] text-[color:var(--muted)]">No verified listings available yet. Be the first to host!</p>
               <Button asChild variant="outline" className="mt-4">
                 <Link href="/host/listings/new">Add a property</Link>

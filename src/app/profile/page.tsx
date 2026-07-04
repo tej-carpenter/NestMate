@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { ProfilePanel } from "@/components/profile/profile-panel";
 import { RouteAccessGate } from "@/components/auth/route-access-gate";
 
@@ -11,7 +12,9 @@ export default function ProfilePage() {
       actionHref="/auth/login"
     >
       <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
-        <ProfilePanel />
+        <Suspense fallback={<div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />}>
+          <ProfilePanel />
+        </Suspense>
       </main>
     </RouteAccessGate>
   );

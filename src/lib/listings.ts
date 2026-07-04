@@ -12,18 +12,20 @@ export async function createListing(payload: {
   price_type: string;
   amenities: string[];
   gender_preference: string;
-  expires_in_days?: string;
+  duration_days?: number;
+  duration_hours?: number;
   available_units?: number;
   images?: string[];
   upi_id?: string;
 }) {
   const supabase = createSupabaseBrowserClient();
 
-  const expires_at = payload.expires_in_days 
-    ? new Date(Date.now() + parseInt(payload.expires_in_days) * 24 * 60 * 60 * 1000).toISOString()
+  const totalHours = (payload.duration_days || 0) * 24 + (payload.duration_hours || 0);
+  const expires_at = totalHours > 0 
+    ? new Date(Date.now() + totalHours * 60 * 60 * 1000).toISOString()
     : null;
 
-  const { expires_in_days, upi_id, ...restPayload } = payload;
+  const { duration_days, duration_hours, upi_id, ...restPayload } = payload;
   let finalDescription = payload.description;
   if (upi_id) {
     finalDescription = `${finalDescription}\n\n---UPI_ID:${upi_id}---`;

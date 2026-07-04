@@ -78,7 +78,7 @@ export default function AdminPayoutsPage() {
   );
 
   const hostOptions = useMemo(() => {
-    const phones = Array.from(new Set(payouts.map((payout) => payout.hostUserPhone)));
+    const phones = Array.from(new Set(payouts.map((payout) => payout.hostUserPhone).filter(Boolean)));
     return phones.map((phone) => ({ phone, label: usersByPhone.get(phone) ?? phone }));
   }, [payouts, usersByPhone]);
 

@@ -6,6 +6,7 @@ import Script from "next/script";
 import { BadgeCheck, CreditCard, ShieldCheck } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
 import { formatRupee } from "@/lib/format";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ export default function PaymentPage({ params }: { params: Promise<{ bookingId: s
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [booking, setBooking] = useState<any>(null);
+  const [settings, setSettings] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
   const resolvedParams = use(params as Promise<{ bookingId: string }>);
@@ -25,23 +27,32 @@ export default function PaymentPage({ params }: { params: Promise<{ bookingId: s
     async function loadBooking() {
       try {
         const supabase = createSupabaseBrowserClient();
-        const { data, error } = await supabase
-          .from("bookings")
-          .select(`
-            *,
-            listings!inner(title)
-          `)
-          .eq("id", resolvedParams.bookingId)
-          .maybeSingle();
+        const [
+          { data: bookingData, error: bookingError },
+          { data: settingsData }
+        ] = await Promise.all([
+          supabase
+            .from("bookings")
+            .select(`
+              *,
+              listings!inner(title)
+            `)
+            .eq("id", resolvedParams.bookingId)
+            .maybeSingle(),
+          (supabase.from("platform_settings").select("*") as any).limit(1).maybeSingle()
+        ]);
 
-        if (error) {
-          console.error("Booking fetch error:", error);
-          if (active) setErrorMsg(error.message);
+        if (bookingError) {
+          console.error("Booking fetch error:", bookingError);
+          if (active) setErrorMsg(bookingError.message);
         }
 
         if (active) {
-          if (data) {
-            setBooking(data);
+          if (bookingData) {
+            setBooking(bookingData);
+          }
+          if (settingsData) {
+            setSettings(settingsData);
           }
           setMounted(true);
         }
@@ -59,6 +70,12 @@ export default function PaymentPage({ params }: { params: Promise<{ bookingId: s
       active = false;
     };
   }, [resolvedParams.bookingId]);
+
+  useEffect(() => {
+    if (booking && booking.booking_status === "confirmed" && booking.payment_status === "completed") {
+      router.replace(`/payment/${booking.id}/receipt`);
+    }
+  }, [booking, router]);
 
   if (!mounted) {
     return (
@@ -135,8 +152,8 @@ export default function PaymentPage({ params }: { params: Promise<{ bookingId: s
             }
 
             toast.success("Payment successful! Booking confirmed.");
-            // Reload to show confirmed state
-            window.location.reload();
+            // Redirect to receipt directly
+            router.replace(`/payment/${booking.id}/receipt`);
           } catch (err: any) {
             toast.error(err.message || "Payment verification failed.");
             setIsProcessing(false);
@@ -172,7 +189,7 @@ export default function PaymentPage({ params }: { params: Promise<{ bookingId: s
       
       <div className="mb-10">
         <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-[color:var(--foreground)] sm:text-5xl">Complete your payment</h1>
-        <p className="mt-3 text-lg text-[color:var(--muted)]">Securely pay via Razorpay to confirm your stay at {booking.listings?.title}.</p>
+        <p className="mt-3 text-lg text-[color:var(--muted)]">Securely pay to confirm your stay at {booking.listings?.title}.</p>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
@@ -200,28 +217,73 @@ export default function PaymentPage({ params }: { params: Promise<{ bookingId: s
                 </div>
               ) : (
                 <div className="space-y-8">
-                  <div className="flex items-center gap-4 rounded-2xl bg-black/5 p-6 dark:bg-white/5">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[color:var(--foreground)] text-[color:var(--background)]">
-                      <CreditCard className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-[color:var(--foreground)]">Razorpay Checkout</p>
-                      <p className="text-[14px] text-[color:var(--muted)]">Pay securely with Cards, UPI, or Netbanking</p>
+                  <div className="rounded-2xl border-2 border-[color:var(--brand)]/20 bg-[color:var(--brand)]/5 p-6 dark:border-[color:var(--brand)]/30 dark:bg-[color:var(--brand)]/10">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[color:var(--brand)]/10 text-[color:var(--brand)] dark:bg-[color:var(--brand)]/20">
+                        <CreditCard className="h-6 w-6" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="font-bold text-[color:var(--foreground)]">Primary Payment Method</p>
+                          <Chip className="!rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[color:var(--brand)] text-white border-0">Recommended</Chip>
+                        </div>
+                        <p className="mt-1 text-[14px] text-[color:var(--muted)]">Pay securely with Cards, UPI, or Netbanking via Razorpay.</p>
+                        
+                        <div className="mt-6">
+                          <Button 
+                            className="w-full h-14 text-[16px] font-semibold" 
+                            onClick={handlePayment} 
+                            disabled={isProcessing}
+                          >
+                            {isProcessing ? "Processing..." : `Pay ${formatRupee(booking.rent_amount)} Now`}
+                          </Button>
+                        </div>
+                        
+                        <div className="mt-4 flex items-center justify-center gap-2 text-[13px] font-medium text-[color:var(--muted)]">
+                          <ShieldCheck className="h-4 w-4" />
+                          Payments are 100% secure and encrypted
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <Button 
-                    className="w-full h-14 text-[16px] font-semibold" 
-                    onClick={handlePayment} 
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? "Processing..." : `Pay ${formatRupee(booking.rent_amount)} Now`}
-                  </Button>
-                  
-                  <div className="flex items-center justify-center gap-2 text-[13px] font-medium text-[color:var(--muted)]">
-                    <ShieldCheck className="h-4 w-4" />
-                    Payments are 100% secure and encrypted
-                  </div>
+                  {settings?.razorpay_enabled && (
+                    <>
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                          <div className="w-full border-t border-[color:var(--border)]"></div>
+                        </div>
+                        <div className="relative flex justify-center">
+                          <span className="bg-[color:var(--surface)] px-3 text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">Alternate Option</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-4 rounded-2xl bg-black/5 p-6 dark:bg-white/5">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[color:var(--foreground)] text-[color:var(--background)]">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-[color:var(--foreground)]">Direct UPI Transfer</p>
+                          <p className="text-[14px] text-[color:var(--muted)]">Send payment directly to our universal UPI ID.</p>
+                          
+                          <div className="mt-4 overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm">
+                            <div className="flex items-center justify-between px-4 py-3">
+                              <div>
+                                <p className="text-[11px] font-semibold uppercase tracking-wider text-[color:var(--muted)]">UPI ID</p>
+                                <p className="mt-0.5 font-mono text-[16px] font-medium text-[color:var(--foreground)] select-all">9285457532-2@ybl</p>
+                              </div>
+                              <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => { navigator.clipboard.writeText('9285457532-2@ybl'); toast.success('UPI ID copied to clipboard'); }}>
+                                Copy
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="mt-4 flex items-center justify-between">
+                            <p className="text-sm font-medium text-[color:var(--foreground)]">Amount: <span className="font-bold">{formatRupee(booking.rent_amount)}</span></p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>

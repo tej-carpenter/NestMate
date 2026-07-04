@@ -41,6 +41,7 @@ export interface ListingInventoryItem extends ListingBaseRecord {
   totalUnits: number;
   availableUnits: number;
   hostUserPhone?: string;
+  bookingCount?: number;
 }
 
 export type ListingActor = {

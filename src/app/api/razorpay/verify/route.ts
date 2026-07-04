@@ -1,24 +1,20 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { paymentService } from "@/lib/payments/payment-service";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, bookingId } = await req.json();
 
-    const secret = process.env.RAZORPAY_KEY_SECRET;
+    const verification = await paymentService.verifyPayment({
+      providerOrderId: razorpay_order_id,
+      providerPaymentId: razorpay_payment_id,
+      signature: razorpay_signature,
+      bookingId,
+    });
 
-    if (!secret) {
-      return NextResponse.json({ error: "Razorpay secret not configured" }, { status: 500 });
-    }
-
-    const generated_signature = crypto
-      .createHmac("sha256", secret)
-      .update(razorpay_order_id + "|" + razorpay_payment_id)
-      .digest("hex");
-
-    if (generated_signature !== razorpay_signature) {
-      return NextResponse.json({ error: "Invalid payment signature" }, { status: 400 });
+    if (!verification.success) {
+      return NextResponse.json({ error: verification.message }, { status: 400 });
     }
 
     const supabase = await createSupabaseServerClient();
@@ -42,7 +38,7 @@ export async function POST(req: Request) {
         transaction_type: "payment",
         payment_method: "upi", // Razorpay handles method internally, we just record upi/card. Hardcoding upi for now as requested by user's removal of card. Or just omit if not required. But payment_method is required.
         payment_status: "completed",
-        razorpay_transaction_id: razorpay_payment_id,
+        provider_transaction_id: verification.transactionId,
         description: `Payment for booking ${booking.id}`,
       })
       .select()
@@ -65,7 +61,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Razorpay Verify Error:", error);
-    return NextResponse.json({ error: "Failed to verify Razorpay payment" }, { status: 500 });
+    console.error("Payment Verify Error:", error);
+    return NextResponse.json({ error: "Failed to verify payment" }, { status: 500 });
   }
 }

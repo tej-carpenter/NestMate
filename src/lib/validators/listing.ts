@@ -21,16 +21,15 @@ export const listingWizardSchema = z.object({
     ),
   price: z.number().int().positive(),
   priceType: z.enum(["monthly", "daily", "bedspace"]),
-  amenities: z.array(z.string()).min(1),
+  amenities: z.string().trim().min(1, "Please provide at least one amenity"),
   genderPreference: z.enum(["male", "female", "any"]),
   // Legacy optional fields. Latitude/longitude are no longer required for
   // listing creation; they are kept for backwards compatibility.
   latitude: z.number().optional(),
   longitude: z.number().optional(),
   availableUnits: z.number().int().min(1),
-  expiresInDays: z.enum(["30", "60", "90"]),
-  upiQrUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  upiId: z.string().regex(/^[\w.-]+@[\w.-]+$/, "UPI ID must contain an @ symbol (e.g. yourname@bank)").trim().min(5).max(50),
+  durationDays: z.number().int().min(0),
+  durationHours: z.number().int().min(0).max(23),
   images: z.array(z.string()).optional(),
 });
 

@@ -10,6 +10,7 @@ import { RouteAccessGate } from "@/components/auth/route-access-gate";
 import { formatDateTime, formatRupee } from "@/lib/format";
 import { getListingStatusLabel, isPublicListingStatus } from "@/lib/listings/status";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 export default function AdminDashboardPage() {
   const [mounted, setMounted] = useState(false);
@@ -20,6 +21,7 @@ export default function AdminDashboardPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
   const [traffic, setTraffic] = useState<any[]>([]);
+  const [settings, setSettings] = useState<any>(null);
   const [refreshToken, setRefreshToken] = useState(0);
 
   void refreshToken;
@@ -35,11 +37,13 @@ export default function AdminDashboardPage() {
         { data: dbUsers },
         { data: dbBookings },
         { data: dbTransactions },
+        { data: dbSettings },
       ] = await Promise.all([
         supabase.from("listings").select("*"),
         supabase.from("users").select("*"),
         supabase.from("bookings").select("*"),
         supabase.from("transactions").select("*"),
+        (supabase.from("platform_settings").select("*") as any).limit(1).maybeSingle(),
       ]);
       
       if (active) {
@@ -67,6 +71,7 @@ export default function AdminDashboardPage() {
         setPayments(txs.filter(t => t.transaction_type === "payment") as any);
         setPayouts(txs.filter(t => t.transaction_type === "payout") as any);
         setTraffic([]);
+        setSettings(dbSettings);
         setMounted(true);
       }
     }
@@ -184,6 +189,18 @@ export default function AdminDashboardPage() {
     refresh();
   }
 
+  async function toggleRazorpay() {
+    const supabase = createSupabaseBrowserClient();
+    if (!settings) return;
+    const newValue = !settings.razorpay_enabled;
+    const { error } = await (supabase.from("platform_settings") as any).update({ razorpay_enabled: newValue }).eq("id", settings.id);
+    if (error) {
+      toast.error(error.message || "Failed to update settings");
+      return;
+    }
+    setSettings((prev: any) => ({ ...prev, razorpay_enabled: newValue }));
+    toast.success("Settings updated");
+  }
 
   return (
     <RouteAccessGate
@@ -199,60 +216,97 @@ export default function AdminDashboardPage() {
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-300">Admin dashboard</p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl text-slate-950 dark:text-slate-50">Monitoring, moderation, and inventory health</h1>
           <p className="mt-4 text-base leading-7 text-slate-600 dark:text-slate-300">Track users, traffic, bookings, payment states, and listing status across hotels, PGs, hostels, rooms, and bedspaces.</p>
-          <div className="mt-5">
+          <div className="mt-5 flex gap-3 flex-wrap">
             <Button asChild>
+              <Link href="/admin/bookings">View Bookings</Link>
+            </Button>
+            <Button asChild variant="outline">
               <Link href="/admin/payouts">Open payout operations</Link>
             </Button>
-            <Button asChild variant="outline" className="ml-3">
+            <Button asChild variant="outline">
               <Link href="/admin/archived-properties">Archived properties</Link>
             </Button>
           </div>
         </Card>
 
-        <div className="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
-          {[
-            ["Total users", String(users.length)],
-            ["Unique visitors", String(totalVisitors)],
-            ["Total bookings", String(bookings.length)],
-            ["Total payments", String(payments.length)],
-            ["Tracked transactions", String(transactions.length)],
-            ["Payout records", String(payouts.length)],
-            ["Pending payouts", String(pendingPayouts.length)],
-            ["Total listings", String(listings.length)],
-            ["Booked listings", String(bookedListingIds.size)],
-            ["Approved listings", String(approvedListings.length)],
-            ["Pending review", String(pendingListings.length)],
-            ["Rejected", String(rejectedListings.length)],
-            ["Expired", String(expiredListings.length)],
-            ["Archived", String(archivedListings.length)],
-            ["Suspended", String(suspendedListings.length)],
-          ].map(([label, value]) => (
-            <Card key={label} className="min-h-32 p-5">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</p>
-              <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-slate-50">{value}</p>
+        <Card className="p-6">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Platform Settings</p>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Global toggles for platform functionality.</p>
+          <div className="mt-6 flex items-center justify-between gap-4">
+            <div>
+              <p className="font-semibold text-slate-950 dark:text-slate-50">Alternate Payment Method (UPI)</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Allow users to pay via the universal UPI ID.</p>
+            </div>
+            <Button onClick={() => void toggleRazorpay()} variant={settings?.razorpay_enabled ? "default" : "outline"} className={settings?.razorpay_enabled ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}>
+              {settings?.razorpay_enabled ? "Enabled" : "Disabled"}
+            </Button>
+          </div>
+        </Card>
+
+
+
+        <div className="grid gap-4 lg:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
+          {listings.map((property) => (
+            <Card key={property.id} className="min-h-72 p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{property.city}</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-50">{property.title}</h2>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{property.locality}</p>
+                </div>
+                <Chip className="!rounded-full px-3 py-1 text-xs font-semibold">{getListingStatusLabel(property.status, property.moderationState)}</Chip>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{property.description}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {property.amenities?.map((amenity: string, index: number) => (
+                  <Chip key={`${amenity}-${index}`} className="!rounded-full px-3 py-1 text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                    {amenity}
+                  </Chip>
+                ))}
+              </div>
+              <div className="mt-4 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                Units: <AvailabilityBadge availableUnits={property.availableUnits ?? 0} />
+              </div>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row flex-wrap">
+                <Button asChild variant="outline" className="sm:flex-1 min-w-[100px]">
+                  <Link href={`/host/listings/new?edit=${property.slug}`}>Edit</Link>
+                </Button>
+                {property.status !== "approved" ? (
+                  <Button variant="outline" className="sm:flex-1 min-w-[100px] border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50" onClick={() => void approveListing(property.id)}>
+                    Approve
+                  </Button>
+                ) : null}
+                {property.status !== "rejected" && property.status !== "approved" ? (
+                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void rejectListing(property.id)}>
+                    Reject
+                  </Button>
+                ) : null}
+                {property.status === "archived" ? (
+                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void restoreListing(property.id)}>
+                    Restore
+                  </Button>
+                ) : null}
+                {property.status === "approved" ? (
+                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void suspendListing(property.id)}>
+                    Suspend
+                  </Button>
+                ) : null}
+                {property.status !== "archived" ? (
+                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void archiveListing(property.id)}>
+                    Archive
+                  </Button>
+                ) : null}
+                {property.status === "expired" ? (
+                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void renewExpiredListing(property.id)}>
+                    Renew
+                  </Button>
+                ) : null}
+                <Button variant="outline" className="sm:flex-1 min-w-[100px] text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/50" onClick={() => void removeListing(property.id)}>
+                  Delete
+                </Button>
+              </div>
             </Card>
           ))}
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr] lg:items-start">
-          <Card className="p-6 lg:self-start">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Traffic overview</p>
-            <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-700 dark:text-slate-300">
-              {topRoutes.length > 0 ? topRoutes.map(([route, count]) => <li key={route} className="flex items-center justify-between"><span>{route}</span><strong>{count}</strong></li>) : <li>No traffic events recorded yet.</li>}
-            </ul>
-          </Card>
-
-          <Card className="p-6 lg:self-start">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Listing types</p>
-            <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-700 dark:text-slate-300">
-              {Object.entries(listingTypeCounts).map(([type, count]) => (
-                <li key={type} className="flex items-center justify-between">
-                  <span className="uppercase">{type}</span>
-                  <strong>{count}</strong>
-                </li>
-              ))}
-            </ul>
-          </Card>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
@@ -303,68 +357,52 @@ export default function AdminDashboardPage() {
           </Card>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
-          {listings.map((property) => (
-            <Card key={property.id} className="min-h-72 p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{property.city}</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-50">{property.title}</h2>
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{property.locality}</p>
-                </div>
-                <Chip className="!rounded-full px-3 py-1 text-xs font-semibold">{getListingStatusLabel(property.status, property.moderationState)}</Chip>
-              </div>
-              <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{property.description}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {property.amenities?.map((amenity: string, index: number) => (
-                  <Chip key={`${amenity}-${index}`} className="!rounded-full px-3 py-1 text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                    {amenity}
-                  </Chip>
-                ))}
-              </div>
-              <div className="mt-4 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                Units: <AvailabilityBadge availableUnits={property.available_units ?? 0} />
-              </div>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row flex-wrap">
-                <Button asChild variant="outline" className="sm:flex-1 min-w-[100px]">
-                  <Link href={`/host/listings/new?edit=${property.slug}`}>Edit</Link>
-                </Button>
-                {property.status !== "approved" ? (
-                  <Button variant="outline" className="sm:flex-1 min-w-[100px] border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50" onClick={() => void approveListing(property.id)}>
-                    Approve
-                  </Button>
-                ) : null}
-                {property.status !== "rejected" && property.status !== "approved" ? (
-                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void rejectListing(property.id)}>
-                    Reject
-                  </Button>
-                ) : null}
-                {property.status === "archived" ? (
-                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void restoreListing(property.id)}>
-                    Restore
-                  </Button>
-                ) : null}
-                {property.status === "approved" ? (
-                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void suspendListing(property.id)}>
-                    Suspend
-                  </Button>
-                ) : null}
-                {property.status !== "archived" ? (
-                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void archiveListing(property.id)}>
-                    Archive
-                  </Button>
-                ) : null}
-                {property.status === "expired" ? (
-                  <Button variant="outline" className="sm:flex-1 min-w-[100px]" onClick={() => void renewExpiredListing(property.id)}>
-                    Renew
-                  </Button>
-                ) : null}
-                <Button variant="outline" className="sm:flex-1 min-w-[100px] text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/50" onClick={() => void removeListing(property.id)}>
-                  Delete
-                </Button>
-              </div>
+
+
+        <div className="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
+          {[
+            ["Total users", String(users.length)],
+            ["Unique visitors", String(totalVisitors)],
+            ["Total bookings", String(bookings.length)],
+            ["Total payments", String(payments.length)],
+            ["Tracked transactions", String(transactions.length)],
+            ["Payout records", String(payouts.length)],
+            ["Pending payouts", String(pendingPayouts.length)],
+            ["Total listings", String(listings.length)],
+            ["Booked listings", String(bookedListingIds.size)],
+            ["Approved listings", String(approvedListings.length)],
+            ["Pending review", String(pendingListings.length)],
+            ["Rejected", String(rejectedListings.length)],
+            ["Expired", String(expiredListings.length)],
+            ["Archived", String(archivedListings.length)],
+            ["Suspended", String(suspendedListings.length)],
+          ].map(([label, value]) => (
+            <Card key={label} className="min-h-32 p-5">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</p>
+              <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-slate-50">{value}</p>
             </Card>
           ))}
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr] lg:items-start">
+          <Card className="p-6 lg:self-start">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Traffic overview</p>
+            <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-700 dark:text-slate-300">
+              {topRoutes.length > 0 ? topRoutes.map(([route, count]) => <li key={route} className="flex items-center justify-between"><span>{route}</span><strong>{count}</strong></li>) : <li>No traffic events recorded yet.</li>}
+            </ul>
+          </Card>
+
+          <Card className="p-6 lg:self-start">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Listing types</p>
+            <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-700 dark:text-slate-300">
+              {Object.entries(listingTypeCounts).map(([type, count]) => (
+                <li key={type} className="flex items-center justify-between">
+                  <span className="uppercase">{type}</span>
+                  <strong>{count}</strong>
+                </li>
+              ))}
+            </ul>
+          </Card>
         </div>
         </div>
       </main>

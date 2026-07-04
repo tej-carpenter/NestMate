@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+export const dynamic = "force-dynamic";
 import { calculateHostPayout } from "@/lib/payouts";
 
 export async function GET(req: Request) {
@@ -17,8 +18,8 @@ export async function GET(req: Request) {
 
     // 2. Fetch Host Listings for summary and management
     const { data: listings } = await (supabase.from("listings") as any)
-      .select("id, title, status, available_units, total_units, kind")
-      .eq("owner_id", hostId)
+      .select("id, title, status, available_units, total_units, space_type")
+      .eq("host_id", hostId)
       .order("created_at", { ascending: false });
 
     const listingSummary = {

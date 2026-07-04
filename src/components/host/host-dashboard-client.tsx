@@ -247,7 +247,12 @@ export function HostDashboardClient() {
 
       {/* Recent Bookings Table */}
       <div className="mt-12">
-        <h2 className="text-[20px] font-bold text-[color:var(--foreground)] mb-6">Recent Bookings</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-[20px] font-bold text-[color:var(--foreground)]">Recent Bookings</h2>
+          <Button variant="outline" size="sm" asChild className="rounded-xl">
+            <Link href="/host/bookings">View All Bookings</Link>
+          </Button>
+        </div>
         <Card className="overflow-hidden rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">

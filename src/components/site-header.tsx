@@ -4,9 +4,9 @@ import Link from "next/link";
 import { AccountActions } from "@/components/nav/account-actions";
 
 const navItems = [
-  { href: "/search", label: "Find a stay" },
-  { href: "/host/dashboard", label: "Host your property" },
-  { href: "/about", label: "About us" },
+  { href: "/search", label: "Search" },
+  { href: "/host/dashboard", label: "Host" },
+  { href: "/about", label: "About" },
 ];
 
 export function SiteHeader() {
@@ -20,7 +20,7 @@ export function SiteHeader() {
           <span className="hidden sm:inline">Nestmate</span>
         </Link>
 
-        <nav className="flex flex-1 items-center gap-4 overflow-x-auto text-nowrap pb-1 sm:justify-center sm:gap-8 sm:pb-0 scrollbar-none">
+        <nav className="hidden sm:flex flex-1 items-center justify-center gap-8 scrollbar-none">
           {navItems.map((item) => (
             <Link key={item.href} href={item.href} className="text-[14px] sm:text-[15px] font-medium text-[color:var(--muted)] transition-colors hover:text-[color:var(--foreground)] shrink-0">
               {item.label}

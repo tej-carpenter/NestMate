@@ -1042,7 +1042,7 @@ export function createListingFromWizard(input: ListingWizardInput) {
     expiresAt: null,
     archivedAt: null,
     description: input.description,
-    amenities: input.amenities,
+    amenities: typeof input.amenities === "string" ? input.amenities.split(",").map(a => a.trim()).filter(Boolean) : input.amenities,
     mapPosition: buildMapPosition(slug),
     kind: inferListingKindFromWizard(input.propertyType),
     totalUnits: 0,

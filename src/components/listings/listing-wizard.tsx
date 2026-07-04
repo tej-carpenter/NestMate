@@ -26,15 +26,15 @@ const defaultValues: ListingWizardInput = {
   googleMapsUrl: "https://www.google.com/maps/search/",
   price: 10000,
   priceType: "monthly",
-  amenities: [""],
+  amenities: "",
   genderPreference: "any",
   availableUnits: 1,
-  expiresInDays: "30",
+  durationDays: 30,
+  durationHours: 0,
   // Latitude/longitude are kept as legacy optional fields. They are not
   // required and are no longer used in the wizard UI.
   latitude: undefined,
   longitude: undefined,
-  upiId: "",
 };
 
 const draftStorageKey = "nestmate.listingDraft.v1";
@@ -56,11 +56,11 @@ const stepDefinitions = [
   },
   {
     title: "Pricing & Payment",
-    fields: ["price", "priceType", "upiId"] as const,
+    fields: ["price", "priceType"] as const,
   },
   {
     title: "Availability",
-    fields: ["availableUnits", "expiresInDays"] as const,
+    fields: ["availableUnits", "durationDays", "durationHours"] as const,
   },
   {
     title: "Amenities",
@@ -94,7 +94,10 @@ function parseDraft(): ListingWizardDraft | null {
     }
 
     return {
-      values: parsed.values,
+      values: {
+        ...parsed.values,
+        amenities: Array.isArray(parsed.values.amenities) ? parsed.values.amenities.join(", ") : parsed.values.amenities,
+      },
       stepIndex: typeof parsed.stepIndex === "number" ? parsed.stepIndex : 0,
       uploads: Array.isArray(parsed.uploads) ? parsed.uploads.filter((item) => item && typeof item.name === "string") : [],
     };
@@ -118,7 +121,6 @@ export function ListingWizard() {
   });
 
   const values = useWatch({ control, defaultValue: defaultValues });
-  const amenities = values.amenities ?? [];
 
   const previewGoogleMapsUrl = useMemo(
     () => resolveGoogleMapsUrl(
@@ -256,12 +258,12 @@ export function ListingWizard() {
         space_type: result.listing.propertyType,
         price: result.listing.price,
         price_type: result.listing.priceType,
-        amenities: result.listing.amenities,
+        amenities: typeof result.listing.amenities === "string" ? result.listing.amenities.split(",").map(a => a.trim()).filter(Boolean) : result.listing.amenities,
         gender_preference: result.listing.genderPreference,
         available_units: result.listing.availableUnits,
-        expires_in_days: result.listing.expiresInDays,
+        duration_days: result.listing.durationDays,
+        duration_hours: result.listing.durationHours,
         images: result.listing.images,
-        upi_id: result.listing.upiId,
       });
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(draftStorageKey);
@@ -378,18 +380,13 @@ export function ListingWizard() {
               <span className="text-[14px] font-semibold text-[color:var(--foreground)]">Price <span className="text-red-500 ml-1">*</span></span>
               <Input {...register("price", { valueAsNumber: true })} inputMode="numeric" placeholder="12000" className="h-12 rounded-xl text-[15px]" />
             </label>
-            <label className="space-y-2 flex flex-col">
+            <label className="space-y-2 flex flex-col md:col-span-2">
               <span className="text-[14px] font-semibold text-[color:var(--foreground)]">Price type <span className="text-red-500 ml-1">*</span></span>
               <select className="h-12 w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] px-4 text-[15px] text-[color:var(--foreground)] transition-colors focus:border-[color:var(--foreground)] focus:ring-1 focus:ring-[color:var(--foreground)]" {...register("priceType")}>
                 <option value="monthly">Monthly</option>
                 <option value="daily">Daily</option>
                 <option value="bedspace">Bed space</option>
               </select>
-            </label>
-            <label className="space-y-2 flex flex-col md:col-span-2">
-              <span className="text-[14px] font-semibold text-[color:var(--foreground)]">UPI ID <span className="text-red-500 ml-1">*</span></span>
-              <Input {...register("upiId")} placeholder="yourname@bank" className="h-12 rounded-xl text-[15px]" />
-              <p className="text-[13px] text-[color:var(--muted)]">Alternative payment option for guests. Example: host@oksbi</p>
             </label>
           </div>
         ) : null}
@@ -402,11 +399,16 @@ export function ListingWizard() {
             </label>
             <label className="space-y-2 flex flex-col">
               <span className="text-[14px] font-semibold text-[color:var(--foreground)]">Listing Duration <span className="text-red-500 ml-1">*</span></span>
-              <select className="h-12 w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] px-4 text-[15px] text-[color:var(--foreground)] transition-colors focus:border-[color:var(--foreground)] focus:ring-1 focus:ring-[color:var(--foreground)]" {...register("expiresInDays")}>
-                <option value="30">30 Days</option>
-                <option value="60">60 Days</option>
-                <option value="90">90 Days</option>
-              </select>
+              <div className="flex gap-4">
+                <div className="flex-1 space-y-1">
+                  <Input type="number" {...register("durationDays", { valueAsNumber: true })} inputMode="numeric" min="0" className="h-12 rounded-xl text-[15px]" placeholder="Days" />
+                  <span className="text-xs text-[color:var(--muted)]">Days</span>
+                </div>
+                <div className="flex-1 space-y-1">
+                  <Input type="number" {...register("durationHours", { valueAsNumber: true })} inputMode="numeric" min="0" max="23" className="h-12 rounded-xl text-[15px]" placeholder="Hours" />
+                  <span className="text-xs text-[color:var(--muted)]">Hours</span>
+                </div>
+              </div>
             </label>
           </div>
         ) : null}
@@ -416,17 +418,7 @@ export function ListingWizard() {
             <label className="space-y-2 flex flex-col">
               <span className="text-[14px] font-semibold text-[color:var(--foreground)]">Amenities, comma separated <span className="text-red-500 ml-1">*</span></span>
               <Textarea
-                value={amenities.join(", ")}
-                onChange={(event) =>
-                  setValue(
-                    "amenities",
-                    event.target.value
-                      .split(",")
-                      .map((item) => item.trim())
-                      .filter(Boolean),
-                    { shouldValidate: true },
-                  )
-                }
+                {...register("amenities")}
                 placeholder="Wi-Fi, AC, meals, parking, geyser"
                 className="min-h-[120px] rounded-xl text-[15px]"
               />
@@ -482,7 +474,7 @@ export function ListingWizard() {
               </div>
               <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
                 <dt className="font-semibold text-[color:var(--foreground)]">Availability</dt>
-                <dd className="mt-1">{values.availableUnits} units, expires in {values.expiresInDays} days</dd>
+                <dd className="mt-1">{values.availableUnits} units, expires in {values.durationDays || 0} days, {values.durationHours || 0} hours</dd>
               </div>
               <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
                 <dt className="font-semibold text-[color:var(--foreground)]">Status</dt>

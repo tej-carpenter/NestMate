@@ -311,22 +311,15 @@ export default function ListingPageTemplate({
               </div>
             ) : null}
 
+            <div className="rounded-xl border border-[color:var(--border)] bg-black/5 p-4 dark:bg-white/5">
+              <p className="text-[13px] font-medium text-[color:var(--muted)]">Alternate payment method (UPI)</p>
+              <p className="mt-1 font-mono text-[15px] font-bold text-[color:var(--foreground)] tracking-tight">9285457532-2@ybl</p>
+            </div>
+
             <Button asChild className="w-full h-12 text-[15px]" disabled={!isBookable}>
               <Link href={`/book/${listing.slug}`}>{isBookable ? "Book now" : "Unavailable"}</Link>
             </Button>
 
-            {listing.upiId ? (
-              <div className="rounded-xl border border-teal-200/70 bg-teal-50 p-4 dark:border-teal-900/40 dark:bg-teal-900/10">
-                <p className="text-[13px] font-semibold text-teal-900/80 dark:text-teal-100/80 mb-2">Alternative Payment Method</p>
-                <div className="flex flex-col gap-1 rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
-                  <p className="text-[12px] text-[color:var(--muted)]">Host UPI ID</p>
-                  <p className="font-[family-name:var(--font-display)] text-[15px] font-bold text-[color:var(--foreground)] break-all select-all">{listing.upiId}</p>
-                </div>
-                <p className="mt-3 text-[12px] text-teal-800/70 dark:text-teal-200/60 leading-relaxed">
-                  This payment method is handled directly between the guest and host.
-                </p>
-              </div>
-            ) : null}
           </Card>
         </aside>
       </div>
